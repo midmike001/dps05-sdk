@@ -55,15 +55,16 @@
         android:layout_height="0dp"
         android:layout_weight="1" />
 
-    <!-- Bottom Navigation Bar -->
-    <com.google.android.material.bottomnavigation.BottomNavigationView
-        android:id="@+id/bottomNav"
+    <!-- Navigation Tabs (Supports unlimited domains) -->
+    <com.google.android.material.tabs.TabLayout
+        android:id="@+id/tabNav"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="52dp"
         android:background="@color/brand_nav_bg"
-        app:itemIconTint="@color/brand_primary"
-        app:itemTextColor="@color/brand_text_primary"
-        app:labelVisibilityMode="labeled"
-        app:menu="@menu/bottom_nav_menu" />
+        app:tabIndicatorColor="@color/brand_primary"
+        app:tabSelectedTextColor="@color/brand_primary"
+        app:tabTextColor="@color/brand_text_secondary"
+        app:tabMode="scrollable"
+        app:tabGravity="fill" />
 
 </LinearLayout>

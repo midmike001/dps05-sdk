@@ -41,20 +41,37 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Bottom Navigation
-        binding.bottomNav.setOnItemSelectedListener { item ->
-            val fragment: Fragment = when (item.itemId) {
-                R.id.nav_telemetry -> TelemetryFragment()
-                R.id.nav_climate -> ClimateSeatsFragment()
-                R.id.nav_body -> BodyAccessFragment()
-                R.id.nav_ev -> EvBatteryFragment()
-                R.id.nav_hud -> HudClusterFragment()
-                R.id.nav_scenes -> ScenesVoiceFragment()
-                else -> TelemetryFragment()
-            }
-            replaceFragment(fragment)
-            true
+        // Navigation Tabs Setup (6 Domains)
+        val tabTitles = listOf(
+            "Telemetry",
+            "Climate & Comfort",
+            "Body & Windows",
+            "EV & Battery",
+            "AR-HUD & InCall",
+            "Scenes & Voice"
+        )
+
+        for (title in tabTitles) {
+            binding.tabNav.addTab(binding.tabNav.newTab().setText(title))
         }
+
+        binding.tabNav.addOnTabSelectedListener(object : com.google.android.material.tabs.TabLayout.OnTabSelectedListener {
+            override fun onTabSelected(tab: com.google.android.material.tabs.TabLayout.Tab?) {
+                val fragment: Fragment = when (tab?.position) {
+                    0 -> TelemetryFragment()
+                    1 -> ClimateSeatsFragment()
+                    2 -> BodyAccessFragment()
+                    3 -> EvBatteryFragment()
+                    4 -> HudClusterFragment()
+                    5 -> ScenesVoiceFragment()
+                    else -> TelemetryFragment()
+                }
+                replaceFragment(fragment)
+            }
+
+            override fun onTabUnselected(tab: com.google.android.material.tabs.TabLayout.Tab?) {}
+            override fun onTabReselected(tab: com.google.android.material.tabs.TabLayout.Tab?) {}
+        })
 
         // Default initial fragment
         if (savedInstanceState == null) {
