@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">Deepal S05 Master Control</string>
+    <string name="title_dashboard">Telemetry</string>
+    <string name="title_climate">Climate &amp; Comfort</string>
+    <string name="title_body">Body &amp; Access</string>
+    <string name="title_ev">EV &amp; Battery</string>
+    <string name="title_hud">AR-HUD &amp; InCall</string>
+    <string name="title_scenes">Scenes &amp; Voice</string>
+</resources>

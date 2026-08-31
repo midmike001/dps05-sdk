@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/brand_bg">
+
+    <!-- Top App Bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:background="@color/brand_nav_bg"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="16dp"
+        android:orientation="horizontal">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="DEEPAL S05 • EPA PLATFORM"
+            android:textColor="@color/brand_primary"
+            android:textSize="17sp"
+            android:textStyle="bold" />
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/switchSimMode"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Simulation Bus"
+            android:textColor="@color/brand_text_secondary"
+            android:textSize="13sp" />
+    </LinearLayout>
+
+    <!-- Last Action Feedback Banner -->
+    <TextView
+        android:id="@+id/tvActionLog"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#0F172A"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="6dp"
+        android:singleLine="true"
+        android:ellipsize="middle"
+        android:textColor="@color/brand_accent"
+        android:textSize="12sp"
+        android:fontFamily="monospace"
+        android:text="Ready." />
+
+    <!-- Fragment Container -->
+    <FrameLayout
+        android:id="@+id/fragmentContainer"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <!-- Bottom Navigation Bar -->
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottomNav"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/brand_nav_bg"
+        app:itemIconTint="@color/brand_primary"
+        app:itemTextColor="@color/brand_text_primary"
+        app:labelVisibilityMode="labeled"
+        app:menu="@menu/bottom_nav_menu" />
+
+</LinearLayout>

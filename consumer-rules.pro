@@ -1,0 +1,3 @@
+-keep class com.openos.virtualcar.** { *; }
+-keep class com.deepal.sdk.** { *; }
+-keep interface com.openos.virtualcar.** { *; }
