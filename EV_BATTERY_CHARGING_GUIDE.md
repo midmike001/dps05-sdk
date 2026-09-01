@@ -7,7 +7,7 @@
 
 The **Changan Deepal S05** features a dedicated Battery Management System (BMS), Thermal Management Domain, and Range Extender (REEV) Controller communicating via OpenOS VirtualCar property buses.
 
-### Key Property IDs (Ground Truth from `d+` Disassembly)
+### Key Property IDs 
 
 | Property Constant | Hex ID | Area Mask | Data Type | Description |
 |:---|:---|:---|:---|:---|

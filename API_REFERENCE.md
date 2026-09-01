@@ -1,7 +1,7 @@
 # `deepal-s05-sdk` API Reference Manual
 
 Detailed API documentation for the **Changan Deepal S05 Kotlin SDK**.
-Reverse engineered 100% against Changan OpenOS system framework and verified with decompiled OEM launcher `com.deepalhome.launcher` (`d+`).
+Reverse engineered 100% against Changan OpenOS system framework.
 
 ---
 
@@ -170,7 +170,21 @@ Manages IPC communication with Changan InCall AR-HUD, cluster, and multi-screen 
 
 ---
 
-## 3. Object: `DeepalS05Property`
+## 3. Class: `TinnovePolymericClient`
+
+Direct Binder IPC bridge to the vehicle's `polymeric_service` (`com.tinnove.polymericservice.IPolymericService`) for retrieving and mutating properties using canonical OpenOS aliases.
+
+### Methods
+- `suspend fun getValue(alias: String): Any?`
+  - Reads a property synchronously by its alias (e.g. `"vc_alias_drive_style"`, `"vc_alias_vehicle_speed"`, `"vc_alias_ac_internal_temp"`).
+- `suspend fun setValue(alias: String, value: Any): Boolean`
+  - Sets a property value by its alias.
+- `suspend fun callMethod(abilityCode: Int, methodCode: Int, params: Map<String, Any?> = emptyMap()): PolymericResult?`
+  - Generic low-level RPC invocation against any Polymeric subsystem module.
+
+---
+
+## 4. Object: `DeepalS05Property`
 
 Complete hardware property map definitions for the Deepal S05 platform.
 

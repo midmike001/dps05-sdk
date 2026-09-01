@@ -43,7 +43,7 @@ In the Android OS subsystem, the HUD is driven through two complementary mechani
 
 ---
 
-## 3. InCall IPC Protocol (Ground Truth from `d+`)
+## 3. InCall IPC Protocol
 
 ### Complete InCall Interactive Transaction Codes
 

@@ -9,7 +9,7 @@ The **Changan Deepal S05** cockpit features an integrated voice assistant, exter
 
 ---
 
-## 2. Voice & Speech TTS Architecture (Ground Truth from `d+`)
+## 2. Voice & Speech TTS Architecture
 
 The Deepal S05 provides in-cabin and external vehicle speaker text-to-speech (TTS) via the `VrLogicService` system binder:
 
@@ -151,5 +151,38 @@ suspend fun activateScene(sceneName: String) {
             client.setAmbientLight(1, 50) // Forest Emerald
         }
     }
+}
+```
+
+---
+
+## 4. Tinnove Polymeric Service (`polymeric_service`)
+
+The Changan OpenOS cockpit platform embeds the **Tinnove Polymeric Service** (`com.tinnove.polymericservice`), which acts as an aggregation bridge capable of getting and setting vehicle attributes via canonical `vc_alias_*` keys:
+
+### Direct Usage via `client.polymeric`
+
+```kotlin
+val polymeric = client.polymeric
+
+suspend fun interactWithPolymeric() {
+    // 1. Read a property by its OpenOS alias
+    val driveStyle = polymeric.getValue("vc_alias_drive_style")
+    val currentSpeed = polymeric.getValue("vc_alias_vehicle_speed")
+    val cabinTemp = polymeric.getValue("vc_alias_ac_internal_temp")
+    
+    println("Drive Style: $driveStyle, Speed: $currentSpeed, Cabin Temp: $cabinTemp")
+
+    // 2. Write a property by alias
+    val ok = polymeric.setValue("vc_alias_drive_style", 1) // 1=Comfort
+    println("Set drive style success: $ok")
+
+    // 3. Generic Module / Method Dispatch
+    val customResult = polymeric.callMethod(
+        abilityCode = TinnovePolymericClient.ABILITY_CAR_CONTROL,
+        methodCode = TinnovePolymericClient.METHOD_GET_VALUE,
+        params = mapOf("request_params_vs_alias" to "vc_alias_disp_dte")
+    )
+    println("Raw Polymeric Result: ${customResult?.data}")
 }
 ```

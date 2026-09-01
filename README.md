@@ -3,7 +3,7 @@
 
 `deepal-s05-sdk` is an automotive-grade, standalone Kotlin library designed to interface directly with the **Changan Deepal S05** head unit, cockpit domain controller, and vehicle body controllers. 
 
-Reverse engineered 100% from the Changan OpenOS system framework and verified against ground truth bytecode from OEM launcher `com.deepalhome.launcher` (`d+`).
+Reverse engineered 100% from the Changan OpenOS system framework.
 
 ---
 

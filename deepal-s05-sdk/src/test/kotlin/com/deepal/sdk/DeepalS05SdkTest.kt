@@ -167,4 +167,18 @@ class DeepalS05SdkTest {
         assertEquals(0x3f, DeepalS05Property.INCALL_CMD_REQUEST_FOCUS)
         assertEquals(0x40, DeepalS05Property.INCALL_CMD_ABANDON_FOCUS)
     }
+
+    @Test
+    fun testTinnovePolymericConstants() {
+        assertEquals("polymeric_service", TinnovePolymericClient.SERVICE_NAME)
+        assertEquals("com.tinnove.polymericservice.IPolymericService", TinnovePolymericClient.DESCRIPTOR)
+        assertEquals(1, TinnovePolymericClient.TRANSACT_CALL_METHOD)
+        assertEquals(2, TinnovePolymericClient.TRANSACT_ASYNC_CALL_METHOD)
+        assertEquals(3, TinnovePolymericClient.TRANSACT_REGISTER_EVENT_LISTENER)
+        assertEquals(4, TinnovePolymericClient.TRANSACT_UNREGISTER_EVENT_LISTENER)
+        assertEquals(0x44d, TinnovePolymericClient.ABILITY_CAR_CONTROL)
+        assertEquals(0x44e, TinnovePolymericClient.ABILITY_CAR_INFO)
+        assertEquals(0x3eb, TinnovePolymericClient.METHOD_GET_VALUE)
+        assertEquals(0x3ec, TinnovePolymericClient.METHOD_SET_VALUE)
+    }
 }

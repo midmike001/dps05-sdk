@@ -9,7 +9,7 @@ The Body and Access domain in the **Changan Deepal S05** (Platform Model C857) i
 1. **OpenOS VirtualCar Property Bus (`com.openos.virtualcar`)**: Doors open status, windows actuation, tailgate actuation/status, and central locks.
 2. **Vehicle Settings Service (`wt.vehiclesetting`)**: Sunroof sunshade roller blind, sunroof glass positioning, and tilt status.
 
-### Key Hardware Constants (Ground Truth from `d+` Disassembly & Real Vehicle Testing)
+### Key Hardware Constants
 
 | Property Constant | Hex ID / Transact | System Bus / Service | Action / State Values |
 |:---|:---|:---|:---|

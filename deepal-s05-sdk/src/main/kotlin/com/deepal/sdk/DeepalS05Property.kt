@@ -3,8 +3,7 @@ package com.deepal.sdk
 /**
  * Hardware and VHAL property definitions for the Changan Deepal S05 (Platform C857 / EPA OpenOS).
  *
- * Reverse-engineered and verified against ground truth Changan OpenOS system framework and
- * decompiled OEM launcher `com.deepalhome.launcher` (`d+`).
+ * Reverse-engineered and verified against ground truth Changan OpenOS system framework
  */
 object DeepalS05Property {
 
@@ -74,8 +73,10 @@ object DeepalS05Property {
 
     // Powertrain & Battery Properties (Read)
     const val PROP_BATTERY_SOC = 0x3140028c        // Int: 0 - 100% (Area: 0x1b)
-    const val PROP_REMAINING_RANGE_EV_DTE = 0x31400501 // Int: EV pure electric DTE (km, Area: 0, alias vc_alias_left_ev_dte)
-    const val PROP_REMAINING_RANGE_DISP_DTE = 0x31600205 // Int: Displayed remaining DTE (km, Area: 0, alias vc_alias_disp_dte)
+    const val PROP_REMAINING_RANGE_EV_DTE =
+        0x31400501 // Int: EV pure electric DTE (km, Area: 0, alias vc_alias_left_ev_dte)
+    const val PROP_REMAINING_RANGE_DISP_DTE =
+        0x31600205 // Int: Displayed remaining DTE (km, Area: 0, alias vc_alias_disp_dte)
     const val PROP_REMAINING_RANGE_RAW = 0x3140028d // Int: Fallback Raw DTE (Area: 0)
     const val PROP_ODOMETER = 0x31600204           // Raw reading in meters, scale divisor = 1000f -> km (Area: 0)
     const val ODOMETER_SCALE_DIVISOR = 1000f
@@ -85,20 +86,25 @@ object DeepalS05Property {
     const val GEAR_RAW_REVERSE = 2                 // Raw gear R code
     const val GEAR_RAW_DRIVE = 3                   // Raw gear D code (or 8)
     const val PROP_VEHICLE_SPEED_VHAL = 0x11600207 // Standard VHAL Float vehicle speed
-    const val PROP_VEHICLE_SPEED_VC = 0x31600202   // OpenOS VirtualCar Float vehicle speed (alias vc_alias_vehicle_speed)
+    const val PROP_VEHICLE_SPEED_VC =
+        0x31600202   // OpenOS VirtualCar Float vehicle speed (alias vc_alias_vehicle_speed)
     const val PROP_EXTERIOR_TEMP = 0x35600403      // Float: °C (Area: 0)
-    const val PROP_TIRE_PRESSURE = 0x37600211      // Float: Tire pressure in Bar (alias vc_alias_tire_pressure, Areas: 1, 2, 4, 8)
+    const val PROP_TIRE_PRESSURE =
+        0x37600211      // Float: Tire pressure in Bar (alias vc_alias_tire_pressure, Areas: 1, 2, 4, 8)
     const val PROP_TIRE_PRESSURE_LEGACY = 0x31410605 // Legacy integer tyre pressure ID
 
     // Trip & REEV Energy Telemetry (Read)
-    const val PROP_THIS_TRIP_ELEC_AVG_CONSUMPTION = 0x314005a6 // Float: kWh/100km (alias vc_alias_this_journey_average_electric_consumption)
+    const val PROP_THIS_TRIP_ELEC_AVG_CONSUMPTION =
+        0x314005a6 // Float: kWh/100km (alias vc_alias_this_journey_average_electric_consumption)
     const val PROP_THIS_TRIP_REEV_ELEC_AVG_POWER = 0x314005cf  // Float: Average electric power
-    const val PROP_THIS_TRIP_OIL_AVG_CONSUMPTION = 0x314005ce  // Float: L/100km (alias vc_alias_this_journey_average_oil_consumption)
+    const val PROP_THIS_TRIP_OIL_AVG_CONSUMPTION =
+        0x314005ce  // Float: L/100km (alias vc_alias_this_journey_average_oil_consumption)
     const val PROP_THIS_TRIP_REEV_ELEC_DISTANCE = 0x31400590   // Float: Electric distance (km)
     const val PROP_THIS_TRIP_REEV_ELEC_TIME = 0x31400591       // Int: Electric driving time (min)
     const val PROP_THIS_TRIP_REEV_FUEL_DISTANCE = 0x314005ae   // Float: Fuel distance (km)
     const val PROP_THIS_TRIP_REEV_FUEL_TIME = 0x314005af       // Int: Fuel driving time (min)
-    const val PROP_SUPPLEMENT_REEV_ELEC_AVG_POWER = 0x314005a3 // Float: Recharge elec avg power (fallback 0x31400594 / 0x3140058a)
+    const val PROP_SUPPLEMENT_REEV_ELEC_AVG_POWER =
+        0x314005a3 // Float: Recharge elec avg power (fallback 0x31400594 / 0x3140058a)
     const val PROP_SUPPLEMENT_REEV_FUEL_AVG_FUEL = 0x31400592  // Float: Recharge fuel avg fuel
     const val PROP_SUPPLEMENT_REEV_ELEC_DISTANCE = 0x31400595  // Float: Recharge elec distance
     const val PROP_SUPPLEMENT_REEV_ELEC_TIME = 0x31400596      // Int: Recharge elec time
@@ -127,7 +133,8 @@ object DeepalS05Property {
     const val PROP_HVAC_INTERNAL_TEMP = 0x38600112 // Float: Cabin internal temperature °C (Area: 1)
     const val PROP_CAR_POWER_ON = 0x31400201       // Int: Vehicle power status (1=On, 2=Off, Area: 1)
     const val PROP_AEB_SWITCH = 0x31400244         // Int: 1=On, 2=Off (Area: 0)
-    const val PROP_DRIVE_MODE = 0x3140040d         // Int: 1=COMFORT, 2=SPORT, 3=ECO, 4=CUSTOM (Area: 0, alias vc_alias_drive_style)
+    const val PROP_DRIVE_MODE =
+        0x3140040d         // Int: 1=COMFORT, 2=SPORT, 3=ECO, 4=CUSTOM (Area: 0, alias vc_alias_drive_style)
     const val DRIVE_MODE_COMFORT = 1
     const val DRIVE_MODE_SPORT = 2
     const val DRIVE_MODE_ECO = 3
@@ -135,7 +142,8 @@ object DeepalS05Property {
 
     // Comfort & Seats (Read/Write)
     const val PROP_SEAT_HEATING = 0x3540010f       // Int: 0=Off, 1=Low, 2=Med, 3=High (Area: 1=Driver, 4=Passenger)
-    const val PROP_SEAT_HEATING_CPM = 0x1540050b   // Int: Seat heating via CarPropertyManager (Area: 1=Driver, 4=Passenger)
+    const val PROP_SEAT_HEATING_CPM =
+        0x1540050b   // Int: Seat heating via CarPropertyManager (Area: 1=Driver, 4=Passenger)
     const val PROP_SEAT_VENTILATION = 0x35400111   // Int: 0=Off, 1=Low, 2=Med, 3=High (Area: 1=Driver, 4=Passenger)
     const val PROP_SEAT_MASSAGE_TOGGLE = 0x31400b2f // Int: 1=On, 2=Off (Area: 0=Driver, 4=Passenger)
     const val PROP_SEAT_MASSAGE_MODE = 0x31400b31   // Int: Mode 1-3 (Area: 0=Driver, 4=Passenger)
@@ -143,13 +151,16 @@ object DeepalS05Property {
     const val PROP_STEERING_WHEEL_HEAT = 0x314003eb // Int: 1=On, 2=Off (Area: 0)
 
     // Windows & Access (Read/Write)
-    const val PROP_DOORS = 0x36400311             // Int: Door position / open state (Areas: FL=0x01, FR=0x04, RL=0x10, RR=0x40)
-    const val PROP_WINDOW_POS = 0x33400300        // Int: 0..100% Window Position (0=Closed, 100=Fully Open, Areas: 0x10, 0x40, 0x100, 0x400)
+    const val PROP_DOORS =
+        0x36400311             // Int: Door position / open state (Areas: FL=0x01, FR=0x04, RL=0x10, RR=0x40)
+    const val PROP_WINDOW_POS =
+        0x33400300        // Int: 0..100% Window Position (0=Closed, 100=Fully Open, Areas: 0x10, 0x40, 0x100, 0x400)
     const val PROP_WINDOW_POS_VC = 0x31400300     // Int: VirtualCar Window Position fallback
     const val PROP_WINDOW_MOVE = 0x33400301       // Int: Rate/Direction (-100=Express Close, 100=Express Open, 0=Stop)
     const val PROP_WINDOW_LOCK = 0x31400303       // Int: 1=Locked, 0=Unlocked (Area: 0)
     const val PROP_TAILGATE_CONTROL = 0x31400313  // Int: Tailgate Actuation Command (1=Open, 2=Close, Area: 0)
-    const val PROP_TAILGATE_STATUS = 0x31400314   // Int: Tailgate Position Status (1=Open, 0=Closed / 2=Closed, Area: 0, alias vc_alias_door_trunk_pos)
+    const val PROP_TAILGATE_STATUS =
+        0x31400314   // Int: Tailgate Position Status (1=Open, 0=Closed / 2=Closed, Area: 0, alias vc_alias_door_trunk_pos)
     const val PROP_TAILGATE = 0x31400314          // Backwards-compatible alias for tailgate status
     const val PROP_DOOR_LOCK = 0x314003eb         // Int: 1=Locked, 2=Unlocked (Area: 0)
 

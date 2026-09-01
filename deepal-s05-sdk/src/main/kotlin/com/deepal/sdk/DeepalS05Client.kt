@@ -22,6 +22,7 @@ import kotlinx.coroutines.withContext
 class DeepalS05Client(
     val connection: VirtualCarConnection = VirtualCarConnection(),
     val hudClient: DeepalHudClient = DeepalHudClient(),
+    val polymeric: TinnovePolymericClient = TinnovePolymericClient(),
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 ) {
     companion object {

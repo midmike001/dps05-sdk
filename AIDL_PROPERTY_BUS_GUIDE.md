@@ -90,15 +90,13 @@ interface IVirtualCarPropertyEventListener {
 
 ## 3. Reverse Engineering Bytecode Mapping (from OEM Launcher & Framework)
 
-The SDK implementation matches the ground-truth bytecode decompiled from `Deepal+.v26.0521.apk` (`com.deepalhome.launcher`):
-
 | Framework / OEM Class | SDK Implementation | Role & Transaction Mapping |
 |:---|:---|:---|
 | `com.openos.virtualcar.IVirtualCar` | [`VirtualCarConnection.kt`](file:///d:/deepal-s05-sdk/deepal-s05-sdk/src/main/kotlin/com/deepal/sdk/VirtualCarConnection.kt) | ServiceManager resolution (`"virtualcar_service"`), Transact 2 `getVirtualCarService` |
 | `com.openos.virtualcar.IVirturalCarProperty` | [`VirtualCarConnection.kt`](file:///d:/deepal-s05-sdk/deepal-s05-sdk/src/main/kotlin/com/deepal/sdk/VirtualCarConnection.kt) | Transact 2 `setValue`, Transact 3 `getValue`, Transact 5 `register` |
 | `com.openos.virtualcar.entity.VirtualCarValue` | [`VirtualCarValue.kt`](file:///d:/deepal-s05-sdk/deepal-s05-sdk/src/main/kotlin/com/openos/virtualcar/entity/VirtualCarValue.kt) | Parcelable container: `mCategoryId`, `mFuncId`, `mAreaId`, `mCode`, `mTimestamp`, `mValue` |
-| `com.deepalhome.launcher.util.CarS05InfoUtil` | [`DeepalS05Telemetry.kt`](file:///d:/deepal-s05-sdk/deepal-s05-sdk/src/main/kotlin/com/deepal/sdk/DeepalS05Telemetry.kt) | Signal aggregator: Door bitmasks (`0x36400311`), Tailgate (`0x31400314`), TPMS (`0x37600211`), Energy |
-| `com.deepalhome.launcher.util.s05.control.S05CarControlHelper` | [`DeepalS05Client.kt`](file:///d:/deepal-s05-sdk/deepal-s05-sdk/src/main/kotlin/com/deepal/sdk/DeepalS05Client.kt) | HVAC, Seat heat/vent, Sunroof shade, Defrost, Windows |
+| `util.CarS05InfoUtil` | [`DeepalS05Telemetry.kt`](file:///d:/deepal-s05-sdk/deepal-s05-sdk/src/main/kotlin/com/deepal/sdk/DeepalS05Telemetry.kt) | Signal aggregator: Door bitmasks (`0x36400311`), Tailgate (`0x31400314`), TPMS (`0x37600211`), Energy |
+| `util.s05.control.S05CarControlHelper` | [`DeepalS05Client.kt`](file:///d:/deepal-s05-sdk/deepal-s05-sdk/src/main/kotlin/com/deepal/sdk/DeepalS05Client.kt) | HVAC, Seat heat/vent, Sunroof shade, Defrost, Windows |
 | `com.incall.serversdk.server.ISvrManager` | [`DeepalHudClient.kt`](file:///d:/deepal-s05-sdk/deepal-s05-sdk/src/main/kotlin/com/deepal/sdk/DeepalHudClient.kt) | Resolves `"com.incall.SVR_MNG_SERVICE"` and `"com.incall.double.INTERACTIVE_SERVICE"` |
 | `com.incall.serversdk.interactive.IDouInteractiveManager` | [`DeepalHudClient.kt`](file:///d:/deepal-s05-sdk/deepal-s05-sdk/src/main/kotlin/com/deepal/sdk/DeepalHudClient.kt) | AR-HUD & Cluster IPC: Status (`0x16`), Maneuvers (`0x18`), Roads (`0x1a`), ETA (`0x1b`), Focus (`0x3f`/`0x40`) |
 | `com.tinnove.vrlogic.server.VrLogicService` | [`DeepalS05Property.kt`](file:///d:/deepal-s05-sdk/deepal-s05-sdk/src/main/kotlin/com/deepal/sdk/DeepalS05Property.kt) | In-cabin (`0x1b`) and outside-speaker (`0x62`) speech TTS playback |

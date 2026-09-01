@@ -7,7 +7,7 @@
 
 The Climate and Comfort domain in the **Changan Deepal S05** (Platform Model C857) controls dual-zone cabin temperature, airflow distribution, multi-stage seat heating/ventilation, and pneumatic massage programs through the OpenOS VirtualCar property bus and CarPropertyManager.
 
-### Key Property IDs & Area Masks (Ground Truth from `d+` Disassembly)
+### Key Property IDs & Area Masks
 
 | Property Constant | Hex ID | Area Mask | Data Type | Description |
 |:---|:---|:---|:---|:---|
