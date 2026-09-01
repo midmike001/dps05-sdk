@@ -5,22 +5,20 @@
 
 ## 1. OpenOS VirtualCar Subsystem Architecture
 
-On the **Changan Deepal S05**, hardware signals and actuators are mediated by the `com.openos.virtualcar` service running in the Android system server.
+On the **Changan Deepal S05** (Model C857 / EPA Platform), hardware signals and actuators are mediated by the `virtualcar_service` running in the Android system server.
 
 ### IPC Topology
 ```
 [ DeepalNav Application / SDK ]
                │
-               ▼ (ServiceManager.checkService("virtualcar"))
+               ▼ (ServiceManager.checkService("virtualcar_service"))
 [ com.openos.virtualcar.IVirtualCar ] (IBinder)
                │
-               ▼ (transact code 2 -> getCarPropertyService())
-[ com.openos.virtualcar.IVirturalCarProperty ] (OEM Spelling)
+               ▼ (transact code 2 -> getCarService("virtualcar_property_service"))
+[ com.openos.virtualcar.IVirturalCarProperty ] (OEM Spelling with 'r')
                │
-               ├──> [ Vehicle Speed & Gear (PROP_VEHICLE_SPEED / PROP_GEAR) ]
-               ├──> [ HVAC Climate Domain (PROP_HVAC_TEMP_SET / PROP_FAN) ]
-               ├──> [ Body Domain (PROP_WINDOW_MOVE / PROP_SUNROOF) ]
-               └──> [ Battery BMS Domain (PROP_BATTERY_SOC / PROP_PRECOND) ]
+               ├──> Transact 2: setProperty(flag=1, group, propId, areaId, reserved=0, timestamp=0L, className, value)
+               └──> Transact 3: getProperty(propId, areaId) -> CarPropertyValue
 ```
 
 ---
@@ -31,8 +29,11 @@ On the **Changan Deepal S05**, hardware signals and actuators are mediated by th
 ```java
 package com.openos.virtualcar;
 
+import android.os.IBinder;
+
 interface IVirtualCar {
-    IBinder getCarPropertyService(); // Transact code 2
+    int getVersion();
+    IBinder getCarService(String serviceName); // Transact code 2
 }
 ```
 
@@ -41,71 +42,107 @@ interface IVirtualCar {
 package com.openos.virtualcar;
 
 interface IVirturalCarProperty {
-    int getIntProperty(int propId, int areaId);
-    float getFloatProperty(int propId, int areaId);
-    String getStringProperty(int propId, int areaId);
-    int[] getIntArrayProperty(int propId, int areaId);
-
-    void setProperty(int propId, int areaId, String className, Object value);
+    int getVersion();
+    int setProperty(int flag, int group, int propId, int areaId, int reserved, long timestamp, String className);
+    int getProperty(int propId, int areaId);
 }
 ```
 
 ---
 
-## 3. Reverse Engineering Bytecode Mapping
+## 3. Reverse Engineering Bytecode Mapping 
 
 The SDK implementation matches the decompiled Changan OpenOS system framework:
 
-| Framework Class | SDK Implementation |
+| Framework Class | SDK Implementation | Role |
 |:---|:---|:---|
-| `com.openos.virtualcar.VirtualCarManager` | `VirtualCarConnection.kt` |
-| `com.openos.virtualcar.CarPropertyIds` | `DeepalS05Property.kt` |
-| `com.openos.virtualcar.CarTelemetry` | `DeepalS05Telemetry.kt` |
-| `com.incall.serversdk.interactive.IDouInteractiveManager` | `DeepalHudClient.kt` |
+| | `VirtualCarConnection.kt` | Low-level Binder IPC for `virtualcar_service` & `IVirturalCarProperty` |
+|  | `DeepalS05Property.kt` | Constants, property IDs, area masks, scaling divisors |
+|  | `DeepalS05Telemetry.kt` | Vehicle telemetry model |
+|  | `DeepalHudClient.kt` | InCall AR-HUD & digital cluster IPC bridge (`0x16`, `0x18`, `0x1a`, `0x1b`, `0x3f`, `0x40`) |
+|  | `VirtualCarConnection.kt` | Callers validating return status (`0 == OK / success`) |
 
 ---
 
 ## 4. Property Setter Implementation (Reflection & Typed Parcel)
 
 ```kotlin
-suspend fun setRawVehicleProperty(
+suspend fun setProperty(
     propId: Int,
-    areaId: Int,
+    areaId: Int = DeepalS05Property.AREA_GLOBAL,
     className: String,
     value: Any
 ): Boolean = withContext(Dispatchers.IO) {
-    val propertyService = connection.getPropertyService() ?: return@withContext false
+    val binder = getPropertyBinder() ?: return@withContext false
+
+    val data = Parcel.obtain()
+    val reply = Parcel.obtain()
+    try {
+        data.writeInterfaceToken("com.openos.virtualcar.IVirturalCarProperty")
+        data.writeInt(1)                         // Flag: 1
+        data.writeInt(0xFF00 and propId)         // Group mask
+        data.writeInt(propId)                    // Property ID
+        data.writeInt(areaId)                    // Area ID
+        data.writeInt(0)                         // Reserved
+        data.writeLong(0L)                       // Timestamp
+        data.writeString(className)              // e.g. "java.lang.Integer", "java.lang.Float"
+        data.writeValue(value)                   // Dynamic Polymorphic Value
+
+        val ok = binder.transact(2, data, reply, 0)
+        if (!ok) return@withContext false
+
+        reply.readException()
+        val resultCode = reply.readInt()
+        resultCode == 0                          // 0 = Success 
+    } finally {
+        data.recycle()
+        reply.recycle()
+    }
+}
+```
+
+---
+
+## 5. Property Getter Implementation (Parcel Unpacking)
+
+
+```kotlin
+fun getProperty(propId: Int, areaId: Int = DeepalS05Property.AREA_GLOBAL): Any? {
+    val binder = getPropertyBinder() ?: return null
+
     val data = Parcel.obtain()
     val reply = Parcel.obtain()
     try {
         data.writeInterfaceToken("com.openos.virtualcar.IVirturalCarProperty")
         data.writeInt(propId)
         data.writeInt(areaId)
-        data.writeString(className)
-        
-        when (value) {
-            is Int -> data.writeInt(value)
-            is Float -> data.writeFloat(value)
-            is String -> data.writeString(value)
-            is Boolean -> data.writeInt(if (value) 1 else 0)
-        }
 
-        val success = propertyService.asBinder().transact(
-            DeepalS05Property.TRANSACT_SET_PROPERTY,
-            data,
-            reply,
-            0
-        )
-        if (success) {
-            reply.readException()
-            return@withContext true
-        }
-    } catch (e: Throwable) {
-        Log.e("AIDL_BUS", "Property set failed: ${e.message}")
+        val ok = binder.transact(3, data, reply, 0)
+        if (!ok) return null
+
+        reply.readException()
+        val status = reply.readInt()
+        if (status == 0) return null
+
+        reply.readInt()  // propId
+        reply.readInt()  // areaId
+        reply.readInt()  // status
+        reply.readInt()  // reserved
+        reply.readLong() // timestamp
+
+        val typeString = reply.readString()
+        val classLoader = if (!typeString.isNullOrEmpty() && typeString != "null") {
+            try {
+                Class.forName(typeString).classLoader
+            } catch (_: Throwable) {
+                null
+            }
+        } else null
+
+        reply.readValue(classLoader)
     } finally {
         data.recycle()
         reply.recycle()
     }
-    false
 }
 ```

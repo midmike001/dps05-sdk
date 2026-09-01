@@ -21,7 +21,7 @@ import kotlin.math.roundToInt
  * - Rain-Sensing Auto Guardian
  */
 class DeepalS05Client(
-    private val connection: VirtualCarConnection = VirtualCarConnection(),
+    val connection: VirtualCarConnection = VirtualCarConnection(),
     val hudClient: DeepalHudClient = DeepalHudClient(),
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 ) {
@@ -60,7 +60,7 @@ class DeepalS05Client(
                     if (isConnected) {
                         // High frequency signals (every 250ms)
                         val rawSpeed = connection.getFloatProperty(
-                            DeepalS05Property.PROP_VEHICLE_SPEED,
+                            DeepalS05Property.PROP_VEHICLE_SPEED_VHAL,
                             DeepalS05Property.AREA_GLOBAL
                         )
                         val speedKmh = if (rawSpeed != null) {
@@ -83,13 +83,21 @@ class DeepalS05Client(
                         if (slowTick % 4 == 0) {
                             val soc = connection.getIntProperty(
                                 DeepalS05Property.PROP_BATTERY_SOC,
-                                DeepalS05Property.AREA_GLOBAL
+                                DeepalS05Property.AREA_SOC
                             ) ?: _telemetry.value.batterySocPercent
 
                             val range = connection.getIntProperty(
                                 DeepalS05Property.PROP_REMAINING_RANGE,
                                 DeepalS05Property.AREA_GLOBAL
                             ) ?: _telemetry.value.remainingRangeKm
+
+                            val rawOdometer = connection.getFloatProperty(
+                                DeepalS05Property.PROP_ODOMETER,
+                                DeepalS05Property.AREA_GLOBAL
+                            )
+                            val odoKm = if (rawOdometer != null && rawOdometer > 0f) {
+                                rawOdometer / DeepalS05Property.ODOMETER_SCALE_DIVISOR
+                            } else _telemetry.value.odometerKm
 
                             val temp = connection.getFloatProperty(
                                 DeepalS05Property.PROP_HVAC_TEMP_SET,
@@ -98,7 +106,7 @@ class DeepalS05Client(
 
                             val fan = connection.getIntProperty(
                                 DeepalS05Property.PROP_HVAC_FAN_SPEED,
-                                DeepalS05Property.AREA_GLOBAL
+                                DeepalS05Property.AREA_DRIVER
                             ) ?: _telemetry.value.fanSpeed
 
                             val precondRaw = connection.getIntProperty(
@@ -118,6 +126,7 @@ class DeepalS05Client(
                                 gear = gearStr,
                                 batterySocPercent = soc,
                                 remainingRangeKm = range,
+                                odometerKm = odoKm,
                                 climateTempC = temp,
                                 fanSpeed = fan,
                                 isBatteryPreconditioning = isPrecond,
@@ -156,12 +165,19 @@ class DeepalS05Client(
 
     suspend fun setClimatePower(enabled: Boolean): Boolean = withContext(Dispatchers.IO) {
         _telemetry.value = _telemetry.value.copy(isClimatePowerOn = enabled)
-        connection.setProperty(
+        val a = connection.setProperty(
+            propId = DeepalS05Property.PROP_HVAC_POWER_ON,
+            areaId = DeepalS05Property.AREA_DRIVER,
+            className = "java.lang.Integer",
+            value = if (enabled) 1 else 2
+        )
+        val b = connection.setProperty(
             propId = DeepalS05Property.PROP_HVAC_POWER_ON,
             areaId = DeepalS05Property.AREA_GLOBAL,
             className = "java.lang.Integer",
             value = if (enabled) 1 else 2
         )
+        a || b
     }
 
     suspend fun setClimateTemperature(tempC: Float, area: Int = DeepalS05Property.AREA_DRIVER): Boolean = withContext(Dispatchers.IO) {
@@ -184,7 +200,7 @@ class DeepalS05Client(
         _telemetry.value = _telemetry.value.copy(fanSpeed = clamped)
         connection.setProperty(
             propId = DeepalS05Property.PROP_HVAC_FAN_SPEED,
-            areaId = DeepalS05Property.AREA_GLOBAL,
+            areaId = DeepalS05Property.AREA_DRIVER,
             className = "java.lang.Integer",
             value = clamped
         )
@@ -194,7 +210,52 @@ class DeepalS05Client(
         _telemetry.value = _telemetry.value.copy(isAcOn = enabled)
         connection.setProperty(
             propId = DeepalS05Property.PROP_HVAC_AC_ON,
+            areaId = DeepalS05Property.AREA_DRIVER,
+            className = "java.lang.Integer",
+            value = if (enabled) 1 else 2
+        )
+    }
+
+    suspend fun setAutoClimate(enabled: Boolean): Boolean = withContext(Dispatchers.IO) {
+        _telemetry.value = _telemetry.value.copy(isAutoClimateOn = enabled)
+        val a = connection.setProperty(
+            propId = DeepalS05Property.PROP_HVAC_AUTO,
+            areaId = DeepalS05Property.AREA_DRIVER,
+            className = "java.lang.Integer",
+            value = if (enabled) 1 else 2
+        )
+        val b = connection.setProperty(
+            propId = DeepalS05Property.PROP_HVAC_AUTO,
             areaId = DeepalS05Property.AREA_GLOBAL,
+            className = "java.lang.Integer",
+            value = if (enabled) 1 else 2
+        )
+        a || b
+    }
+
+    suspend fun setRecirculation(recircOn: Boolean): Boolean = withContext(Dispatchers.IO) {
+        _telemetry.value = _telemetry.value.copy(isRecirculationOn = recircOn)
+        connection.setProperty(
+            propId = DeepalS05Property.PROP_HVAC_RECIRC,
+            areaId = DeepalS05Property.AREA_DRIVER,
+            className = "java.lang.Integer",
+            value = if (recircOn) 2 else 1 // Vendor Tri-state: 2=Recirc, 1=Fresh
+        )
+    }
+
+    suspend fun setMaxAc(enabled: Boolean): Boolean = withContext(Dispatchers.IO) {
+        connection.setProperty(
+            propId = DeepalS05Property.PROP_HVAC_MAX_AC,
+            areaId = DeepalS05Property.AREA_DRIVER,
+            className = "java.lang.Integer",
+            value = if (enabled) 1 else 2
+        )
+    }
+
+    suspend fun setSyncMode(enabled: Boolean): Boolean = withContext(Dispatchers.IO) {
+        connection.setProperty(
+            propId = DeepalS05Property.PROP_HVAC_SYNC,
+            areaId = DeepalS05Property.AREA_DRIVER,
             className = "java.lang.Integer",
             value = if (enabled) 1 else 2
         )
@@ -204,7 +265,7 @@ class DeepalS05Client(
         _telemetry.value = _telemetry.value.copy(isFrontDefrostOn = enabled)
         connection.setProperty(
             propId = DeepalS05Property.PROP_HVAC_DEFROST_FRONT,
-            areaId = DeepalS05Property.AREA_GLOBAL,
+            areaId = DeepalS05Property.AREA_DRIVER,
             className = "java.lang.Integer",
             value = if (enabled) 1 else 2
         )
@@ -214,24 +275,14 @@ class DeepalS05Client(
         _telemetry.value = _telemetry.value.copy(isRearDefrostOn = enabled)
         connection.setProperty(
             propId = DeepalS05Property.PROP_HVAC_DEFROST_REAR,
-            areaId = DeepalS05Property.AREA_GLOBAL,
-            className = "java.lang.Integer",
-            value = if (enabled) 1 else 2
-        )
-    }
-
-    suspend fun setAutoClimate(enabled: Boolean): Boolean = withContext(Dispatchers.IO) {
-        _telemetry.value = _telemetry.value.copy(isAutoClimateOn = enabled)
-        connection.setProperty(
-            propId = DeepalS05Property.PROP_HVAC_AUTO,
-            areaId = DeepalS05Property.AREA_GLOBAL,
+            areaId = DeepalS05Property.AREA_DRIVER,
             className = "java.lang.Integer",
             value = if (enabled) 1 else 2
         )
     }
 
     // ==========================================
-    // 2. Seats & Cabin Comfort
+    // 2. Seats & Cabin Comfort Controls
     // ==========================================
 
     suspend fun setSeatHeating(level: Int, area: Int = DeepalS05Property.AREA_DRIVER): Boolean = withContext(Dispatchers.IO) {

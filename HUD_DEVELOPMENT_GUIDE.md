@@ -13,7 +13,8 @@ In the Android OS subsystem, the HUD is driven through two complementary mechani
    - The application renders a customized native Android `Presentation` surface on this display.
 2. **Changan InCall Double-Interactive IPC Protocol (`DeepalHudClient`)**:
    - Inter-process communication (IPC) via Android Binder with `com.incall.SVR_MNG_SERVICE` and `com.incall.double.INTERACTIVE_SERVICE`.
-   - Transmits maneuver icons, countdown distances, road names, and trip metrics to the vehicle's native cluster/HUD controller.
+   - Transmits maneuver icons (`0x18`), countdown distances (`0x18`), road names (`0x1a`), remain metrics (`0x1b`), and navigation state (`0x16`) to the vehicle's native cluster/HUD controller.
+   - Manages navigation focus (`0x3f` request focus, `0x40` abandon focus) attaching the `INaviFocusCallback` token.
 
 ---
 
@@ -52,218 +53,25 @@ In the Android OS subsystem, the HUD is driven through two complementary mechani
 
 ---
 
-## 3. Windshield Presentation Implementation (`DeepalHudPresentation`)
-
-### Why MapLibre `TextureView` is Required
-Standard Android `SurfaceView` punches a hole through the view hierarchy and can cause z-ordering conflicts, flicker, or blank frames inside secondary `Presentation` contexts on automotive GPUs. 
-
-Using `MapLibreMapOptions.textureMode(true)` instructs MapLibre to render into a standard `TextureView`, ensuring flawless composition inside the 800x480 presentation window.
-
-### Presentation Class Template
-```kotlin
-package com.deepalnav.ui.components
-
-import android.app.Activity
-import android.app.Presentation
-import android.content.Context
-import android.graphics.Color
-import android.graphics.Typeface
-import android.location.Location
-import android.os.Bundle
-import android.view.Display
-import android.view.Gravity
-import android.view.ViewGroup
-import android.widget.FrameLayout
-import android.widget.LinearLayout
-import android.widget.TextView
-import org.maplibre.android.maps.MapLibreMapOptions
-import org.maplibre.android.maps.MapView
-import org.maplibre.android.maps.MapLibreMap
-
-class DeepalHudPresentation(
-    activity: Activity,
-    display: Display,
-    private val styleJson: String
-) : Presentation(activity, display) {
-
-    companion object {
-        const val HUD_SURFACE_WIDTH = 800
-        const val HUD_SURFACE_HEIGHT = 480
-        const val HUD_MAP_LEFT = 573
-        const val HUD_MAP_TOP = 167
-        const val HUD_MAP_WIDTH = 227
-        const val HUD_MAP_HEIGHT = 188
-    }
-
-    private var hudManeuverView: TextView? = null
-    private var hudDistanceView: TextView? = null
-    private var hudBatteryRangeView: TextView? = null
-    private var hudSpeedLimitView: TextView? = null
-    private var hudTpmsView: TextView? = null
-    private var hudSpeedView: TextView? = null
-    private var hudSpeedKmhView: TextView? = null
-    private var hudNextRoadView: TextView? = null
-    private var mapLibreMap: MapLibreMap? = null
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-
-        // 1. Root Black Canvas
-        val root = FrameLayout(context).apply {
-            setBackgroundColor(Color.BLACK)
-            layoutParams = ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
-            )
-        }
-
-        // 2. Texture-Mode MapView at Optical Window
-        val mapOptions = MapLibreMapOptions.createFromAttributes(context)
-            .textureMode(true)
-            .attributionEnabled(false)
-            .logoEnabled(false)
-            .compassEnabled(false)
-
-        val mapView = MapView(context, mapOptions).apply {
-            layoutParams = FrameLayout.LayoutParams(HUD_MAP_WIDTH, HUD_MAP_HEIGHT).apply {
-                leftMargin = HUD_MAP_LEFT
-                topMargin = HUD_MAP_TOP
-            }
-        }
-        root.addView(mapView)
-
-        // 3. UI Elements Container
-        val hudContainer = FrameLayout(context).apply {
-            layoutParams = FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT
-            )
-        }
-
-        // Add Left Block, Center Block, Right Block...
-        root.addView(hudContainer)
-        setContentView(root)
-
-        // Initialize Map
-        mapView.onCreate(null)
-        mapView.getMapAsync { map ->
-            mapLibreMap = map
-            map.setStyle(org.maplibre.android.maps.Style.Builder().fromJson(styleJson))
-        }
-    }
-}
-```
-
----
-
-## 4. Secondary Display Discovery & Auto-Attachment
-
-In your automotive `Activity` or `Service`, listen for display connections or inspect `DisplayManager`:
+## 3. InCall IPC Protocol (Ground Truth)
 
 ```kotlin
-import android.content.Context
-import android.hardware.display.DisplayManager
-import android.util.DisplayMetrics
-import android.view.Display
+val hud = DeepalHudClient()
 
-class HudDisplayManager(private val context: Context) {
-    private var hudPresentation: DeepalHudPresentation? = null
+suspend fun updateGuidance() {
+    // 1. Request navigation display focus (Transact 0x3f)
+    hud.requestNaviFocus("com.deepalnav")
 
-    fun attachHudIfAvailable(styleJson: String, activity: android.app.Activity) {
-        val dm = context.getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
-        val displays = dm.displays
+    // 2. Set active guidance state (Transact 0x16: 1=Active)
+    hud.sendNavigateStatus(1)
 
-        for (display in displays) {
-            if (display.displayId != Display.DEFAULT_DISPLAY) {
-                val metrics = DisplayMetrics()
-                display.getRealMetrics(metrics)
+    // 3. Send turn icon (e.g. 2 = Right Turn) and distance (150m) (Transact 0x18)
+    hud.sendNavigateTurnInfo(turnIcon = 2, turnDistMeters = 150)
 
-                // Match Deepal S05 AR-HUD resolution (800x480)
-                if (metrics.widthPixels == 800 && metrics.heightPixels == 480) {
-                    if (hudPresentation == null) {
-                        hudPresentation = DeepalHudPresentation(activity, display, styleJson).apply {
-                            show()
-                        }
-                    }
-                    return
-                }
-            }
-        }
-    }
+    // 4. Send road names (Transact 0x1a)
+    hud.sendNavigateRoadInfo(nextRoad = "Russian Blvd", curRoad = "Monivong Blvd")
 
-    fun detach() {
-        hudPresentation?.dismiss()
-        hudPresentation = null
-    }
+    // 5. Send remaining distance (12500m) and remaining time (840s) (Transact 0x1b)
+    hud.sendNavigateRemainInfo(remainDistMeters = 12500, remainTimeSec = 840)
 }
 ```
-
----
-
-## 5. InCall IPC Navigation Protocol (`DeepalHudClient`)
-
-The vehicle domain controller accepts navigation guidance packets via `com.incall.double.INTERACTIVE_SERVICE`.
-
-### Protocol Transaction Summary
-
-| Transact Code | Method | Payload Parameters | Description |
-|:---|:---|:---|:---|
-| **`0x3f` (63)** | `requestNaviFocus` | `String` (package name) | Acquires cluster/HUD focus for navigation |
-| **`0x40` (64)** | `abandonNaviFocus` | `String` (package name) | Releases cluster/HUD focus on trip completion |
-| **`0x16` (22)** | `sendNavigateStatus`| `Int` (`1`=Active, `2`=Arrived, `0`=Idle) | Guidance status state machine |
-| **`0x18` (24)** | `sendNavigateTurnInfo` | `Int` (iconId), `Int` (distMeters) | Maneuver turn icon and distance countdown |
-| **`0x1a` (26)** | `sendNavigateRoadInfo` | `String` (nextRoad), `String` (curRoad) | Road name ribbons |
-| **`0x1b` (27)** | `sendNavigateRemainInfo` | `Int` (remainDistM), `Int` (remainSec) | Trip total remaining distance & ETA |
-
-### Maneuver Turn Icon IDs
-
-| Icon ID | Maneuver Description | Visual Symbol |
-|:---|:---|:---|
-| **`1`** | Continue Straight | `↑` |
-| **`2`** | Turn Right | `↱` |
-| **`3`** | Turn Left | `↰` |
-| **`4`** | Slight Right | `↗` |
-| **`5`** | Slight Left | `↖` |
-| **`6`** | U-Turn | `⮌` |
-| **`7`** | Roundabout | `⮡` |
-
-### Full Guidance Session Example
-```kotlin
-val hudClient = DeepalHudClient()
-
-suspend fun startGuidanceSession() {
-    // 1. Request focus
-    hudClient.requestNaviFocus("com.deepalnav")
-
-    // 2. Set status to active
-    hudClient.sendNavigateStatus(1)
-
-    // 3. Send turn info (Right turn in 200m)
-    hudClient.sendNavigateTurnInfo(turnIcon = 2, turnDistMeters = 200)
-
-    // 4. Send road names
-    hudClient.sendNavigateRoadInfo(
-        nextRoad = "Russian Federation Blvd",
-        curRoad = "Preah Monivong Blvd"
-    )
-
-    // 5. Send trip remaining info (4.8 km, 720 sec)
-    hudClient.sendNavigateRemainInfo(remainDistMeters = 4800, remainTimeSec = 720)
-}
-
-suspend fun endGuidanceSession() {
-    hudClient.sendNavigateStatus(2) // Arrived
-    hudClient.abandonNaviFocus("com.deepalnav")
-    hudClient.clear()
-}
-```
-
----
-
-## 6. Live Testing & Diagnostics
-
-To test and verify the HUD integration without physical road driving:
-1. Launch **DeepalNav** on the head unit or emulator.
-2. Go to **Settings** -> Scroll down to **About**.
-3. **Tap 5 times** on the About card to open the **Deepal S05 Full Hardware API Suite**.
-4. Select the **HUD** category to trigger turn icons, distances, road names, and status updates interactively.

@@ -17,12 +17,12 @@ The voice engine listens for the wake phrase **"Hello Deepal"** via `VoiceWakeSe
 
 | Spoken Phrase | Triggered Hardware Action | Description |
 |:---|:---|:---|
-| *"Open the sunroof"* / *"Close sunroof"* | `setSunroofShade(1 / 2)` | Opens or closes the electric sunroof shade |
-| *"Turn on driver seat massage"* | `setSeatMassage(true, mode=2, level=3)` | Activates wave massage for driver |
-| *"I'm feeling hot"* / *"Rapid cool"* | `applyScene("RAPID_COOL")` | Max AC, blower level 7, max seat ventilation |
-| *"Defrost the windshield"* | `applyScene("DEFROST")` | Front max defroster, high heat, blower level 7 |
-| *"Nap mode"* / *"Take a rest"* | `applyScene("NAP")` | Low AC (24°C), fan speed 2, sunroof closed |
-| *"Camp mode"* | `applyScene("CAMP")` | Steady cabin AC, screens dimmed, battery monitor |
+| *"Open the sunroof"* / *"Close sunroof"* | `setSunroofShade(1 / 2)` | Opens or closes the electric sunroof shade (`0x31400313`) |
+| *"Turn on driver seat massage"* | `setSeatMassage(true, mode=1, level=3)` | Activates massage for driver (`0x31400b2f`, `0x31400b31`, `0x31400b30`) |
+| *"I'm feeling hot"* / *"Rapid cool"* | `applyScene("RAPID_COOL")` | Max AC (`0x3540010b`), blower level 7, max seat ventilation (`0x35400111`) |
+| *"Defrost the windshield"* | `applyScene("DEFROST")` | Front max defroster (`0x33400103`), rear defroster (`0x3540010c`) |
+| *"Nap mode"* / *"Take a rest"* | `applyScene("NAP")` | Low AC (24°C), fan speed 1, sunroof closed, seat massage on |
+| *"Camp mode"* | `applyScene("CAMP")` | Steady cabin AC (23°C), fan speed 2, emerald ambient lighting |
 | *"Find charging stations"* | Opens EV Charging Station overlay | Shows nearest high-power DC fast-chargers |
 
 ---
@@ -35,36 +35,36 @@ Scenes orchestrate multiple vehicle domains simultaneously:
 val client = DeepalS05Client()
 
 suspend fun activateScene(sceneName: String) {
-    when (sceneName) {
+    when (sceneName.uppercase()) {
         "RAPID_COOL" -> {
-            // Cool down boiling cabin rapidly
+            client.setClimatePower(true)
             client.setClimateTemperature(18.0f)
-            client.setAcEnabled(true)
             client.setFanSpeed(7)
-            client.setSeatVentilation(level = 3, areaId = DeepalS05Property.AREA_DRIVER)
-            client.setSeatVentilation(level = 3, areaId = DeepalS05Property.AREA_PASSENGER)
-            client.setSunroofShade(action = 2) // Close shade to block solar heat
+            client.setSeatVentilation(3, area = DeepalS05Property.AREA_DRIVER)
+            client.setSeatVentilation(3, area = DeepalS05Property.AREA_PASSENGER)
+            client.setWindows(2)      // Close windows
+            client.setSunroofShade(2) // Close shade to block heat
         }
         "NAP" -> {
-            // Quiet, comfortable resting cabin
+            client.setWindows(2)
+            client.setSunroofShade(2)
             client.setClimateTemperature(24.0f)
-            client.setFanSpeed(2)
-            client.setSeatHeating(level = 0)
-            client.setSeatVentilation(level = 0)
-            client.setSunroofShade(action = 2)
-            client.setWindows(action = 2)
+            client.setFanSpeed(1)
+            client.setSeatHeating(1, area = DeepalS05Property.AREA_DRIVER)
+            client.setSeatMassage(true, mode = 1, level = 1)
+            client.setAmbientLight(2, 30) // Amber dim
         }
         "DEFROST" -> {
-            // Rapidly clear glass condensation & frost
             client.setFrontDefrost(true)
             client.setRearDefrost(true)
-            client.setClimateTemperature(28.0f)
-            client.setFanSpeed(8)
+            client.setSteeringWheelHeat(true)
+            client.setSeatHeating(3, area = DeepalS05Property.AREA_DRIVER)
         }
         "CAMP" -> {
-            // Continuous camp ventilation
+            client.setClimatePower(true)
             client.setClimateTemperature(23.0f)
-            client.setFanSpeed(3)
+            client.setFanSpeed(2)
+            client.setAmbientLight(1, 50) // Forest Emerald
         }
     }
 }

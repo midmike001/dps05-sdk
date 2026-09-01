@@ -1,5 +1,6 @@
 package com.deepal.sdk
 
+import android.os.Binder
 import android.os.IBinder
 import android.os.Parcel
 import android.util.Log
@@ -8,23 +9,27 @@ import kotlinx.coroutines.withContext
 import java.lang.reflect.Method
 
 /**
- * InCall OEM Double-Interactive HUD & Cluster Navigation IPC Bridge.
- *
- * Implements direct Binder communication with Changan InCall service subsystem:
- * - Service: com.incall.SVR_MNG_SERVICE
- * - Interactive Service: com.incall.double.INTERACTIVE_SERVICE
- *
+ * Native Binder IPC Client to Changan InCall AR-HUD & Digital Instrument Cluster.
  */
 class DeepalHudClient {
     companion object {
         private const val TAG = "DeepalHudClient"
     }
 
+    @Volatile
     private var svrManagerBinder: IBinder? = null
+
+    @Volatile
     private var interactiveServiceBinder: IBinder? = null
 
+    private val naviFocusCallback = object : Binder() {
+        init {
+            attachInterface(null, "com.incall.serversdk.interactive.callback.INaviFocusCallback")
+        }
+    }
+
     /**
-     * Resolves the primary InCall SvrManager via ServiceManager.
+     * Resolves com.incall.SVR_MNG_SERVICE from Android ServiceManager.
      */
     private fun getSvrManager(): IBinder? {
         if (svrManagerBinder != null && svrManagerBinder!!.isBinderAlive) {
@@ -32,8 +37,16 @@ class DeepalHudClient {
         }
         return try {
             val smClass = Class.forName("android.os.ServiceManager")
-            val getServiceMethod: Method = smClass.getMethod("getService", String::class.java)
+            val getServiceMethod: Method = try {
+                smClass.getMethod("checkService", String::class.java)
+            } catch (_: Throwable) {
+                smClass.getMethod("getService", String::class.java)
+            }
             val binder = getServiceMethod.invoke(null, DeepalS05Property.INCALL_SVR_MNG_SERVICE) as? IBinder
+                ?: run {
+                    val fallback = smClass.getMethod("getService", String::class.java)
+                    fallback.invoke(null, DeepalS05Property.INCALL_SVR_MNG_SERVICE) as? IBinder
+                }
             svrManagerBinder = binder
             binder
         } catch (e: Throwable) {
@@ -184,7 +197,7 @@ class DeepalHudClient {
         try {
             data.writeInterfaceToken(DeepalS05Property.INCALL_DESCRIPTOR_INTERACTIVE_MANAGER)
             data.writeString(packageName)
-            data.writeStrongBinder(null) // Optional callback
+            data.writeStrongBinder(naviFocusCallback)
             val ok = binder.transact(DeepalS05Property.INCALL_CMD_REQUEST_NAVI_FOCUS, data, reply, 0)
             if (ok) {
                 reply.readException()
@@ -209,6 +222,7 @@ class DeepalHudClient {
         try {
             data.writeInterfaceToken(DeepalS05Property.INCALL_DESCRIPTOR_INTERACTIVE_MANAGER)
             data.writeString(packageName)
+            data.writeStrongBinder(naviFocusCallback)
             val ok = binder.transact(DeepalS05Property.INCALL_CMD_ABANDON_NAVI_FOCUS, data, reply, 0)
             if (ok) {
                 reply.readException()
