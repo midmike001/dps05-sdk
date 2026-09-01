@@ -75,6 +75,6 @@ Speech engine providing in-cabin TTS (`0x1b`) and external vehicle speaker broad
 | 🛞 **Tire Pressure (TPMS)** | Real-Time Tire Pressures in Bar for FL (`0x01`), FR (`0x02`), RL (`0x04`), RR (`0x08`) | `0x37600211` |
 | ❄️ **Climate & HVAC** | Dual-Zone Temperature (17.5°C-32.5°C), Cabin Internal Thermometer, 8 Fan Speeds, AC, Front/Rear Defrost, Recirculation, Auto | `0x35600105`, `0x38600112`, `0x35400109`, `0x35400102`, `0x33400103`, `0x3540010c`, `0x35400108`, `0x35400104` |
 | 💺 **Seat Comfort** | 3-Level Heating, 3-Level Ventilation, Pneumatic Massage (Modes 1-3, Levels 1-8), Steering Heat | `0x3540010f`, `0x1540050b`, `0x35400111`, `0x31400b2f`, `0x31400b31`, `0x31400b30`, `0x314003eb` |
-| 🚪 **Doors & Access** | Individual 4-Door Sensing (`0x01`, `0x04`, `0x10`, `0x40`), 4 Power Windows, Sunroof Roller Blind, Power Tailgate, Central Locks | `0x36400311`, `0x33400301`, `0x31400313`, `0x31400314`, `0x314003eb` |
+| 🚪 **Doors & Access** | Individual 4-Door Sensing (`0x01`, `0x04`, `0x10`, `0x40`), 4 Power Windows, Power Tailgate Actuate & Status, Central Locks, Sunroof Sunshade | `0x36400311`, `0x33400301`, `0x31400313`, `0x31400314`, `0x314003eb`, `wt.vehiclesetting` (0x40) |
 | 💡 **Cabin Lighting** | Ambient Light Color Presets & Brightness, Air Purifier | `0x3140039a`, `0x3140039b`, `0x35400122` |
 | 🔊 **Audio & Voice** | Outside Speaker Music Event, In-Cabin & Outside Vehicle Speech TTS | Audio Event `0x66`, Speech Transacts `0x1b`, `0x62` |

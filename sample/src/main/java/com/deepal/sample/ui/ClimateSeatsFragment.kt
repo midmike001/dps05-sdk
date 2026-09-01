@@ -70,6 +70,12 @@ class ClimateSeatsFragment : Fragment() {
         binding.btnFrontDefrost.setOnClickListener { viewModel.toggleFrontDefrost() }
         binding.btnRearDefrost.setOnClickListener { viewModel.toggleRearDefrost() }
 
+        // Airflow Vent Direction (8=Defrost, 9=Face, 10=Feet, 11=Dual)
+        binding.btnWindFace.setOnClickListener { viewModel.setWindDirection(9) }
+        binding.btnWindFeet.setOnClickListener { viewModel.setWindDirection(10) }
+        binding.btnWindDual.setOnClickListener { viewModel.setWindDirection(11) }
+        binding.btnWindDefrost.setOnClickListener { viewModel.setWindDirection(8) }
+
         // Seat Comfort (Driver & Passenger)
         binding.btnDriverHeat.setOnClickListener {
             val next = (viewModel.telemetry.value.driverSeatHeat + 1) % 4
@@ -150,6 +156,12 @@ class ClimateSeatsFragment : Fragment() {
 
                     binding.btnRearDefrost.text = "REAR: " + if (t.isRearDefrostOn) "ON" else "OFF"
                     binding.btnRearDefrost.setTextColor(if (t.isRearDefrostOn) Color.parseColor("#FFB300") else Color.parseColor("#94A3B8"))
+
+                    // Wind Direction highlights
+                    binding.btnWindFace.setTextColor(if (t.windDirection == 9) Color.parseColor("#00E5FF") else Color.parseColor("#94A3B8"))
+                    binding.btnWindFeet.setTextColor(if (t.windDirection == 10) Color.parseColor("#00E5FF") else Color.parseColor("#94A3B8"))
+                    binding.btnWindDual.setTextColor(if (t.windDirection == 11) Color.parseColor("#00E5FF") else Color.parseColor("#94A3B8"))
+                    binding.btnWindDefrost.setTextColor(if (t.windDirection == 8) Color.parseColor("#00E5FF") else Color.parseColor("#94A3B8"))
 
                     // Seats
                     binding.btnDriverHeat.text = "Heat: ${t.driverSeatHeat}"

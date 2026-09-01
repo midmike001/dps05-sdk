@@ -265,6 +265,274 @@ class DeepalHudClient {
     }
 
     /**
+     * Sends route progress percentage to HUD / cluster (Transact 0x32 / 50).
+     */
+    suspend fun sendNavigatePercent(percent: Int): Boolean = withContext(Dispatchers.IO) {
+        val binder = getInteractiveService() ?: return@withContext false
+        val data = Parcel.obtain()
+        val reply = Parcel.obtain()
+        try {
+            data.writeInterfaceToken(DeepalS05Property.INCALL_DESCRIPTOR_INTERACTIVE_MANAGER)
+            data.writeInt(percent)
+            val ok = binder.transact(DeepalS05Property.INCALL_CMD_PERCENT, data, reply, 0)
+            if (ok) {
+                reply.readException()
+                return@withContext true
+            }
+        } catch (e: Throwable) {
+            Log.e(TAG, "sendNavigatePercent failed: ${e.message}")
+        } finally {
+            data.recycle()
+            reply.recycle()
+        }
+        false
+    }
+
+    /**
+     * Sends GPS / vehicle location metadata string to cluster (Transact 0x04 / 4).
+     */
+    suspend fun sendLocationInfo(locationJsonOrString: String): Boolean = withContext(Dispatchers.IO) {
+        val binder = getInteractiveService() ?: return@withContext false
+        val data = Parcel.obtain()
+        val reply = Parcel.obtain()
+        try {
+            data.writeInterfaceToken(DeepalS05Property.INCALL_DESCRIPTOR_INTERACTIVE_MANAGER)
+            data.writeString(locationJsonOrString)
+            val ok = binder.transact(DeepalS05Property.INCALL_CMD_LOCATION_INFO, data, reply, 0)
+            if (ok) {
+                reply.readException()
+                return@withContext true
+            }
+        } catch (e: Throwable) {
+            Log.e(TAG, "sendLocationInfo failed: ${e.message}")
+        } finally {
+            data.recycle()
+            reply.recycle()
+        }
+        false
+    }
+
+    /**
+     * Sends weather and time info string to HUD / cluster (Transact 0x0e / 14).
+     */
+    suspend fun sendWeatherInfo(weatherJsonOrString: String): Boolean = withContext(Dispatchers.IO) {
+        val binder = getInteractiveService() ?: return@withContext false
+        val data = Parcel.obtain()
+        val reply = Parcel.obtain()
+        try {
+            data.writeInterfaceToken(DeepalS05Property.INCALL_DESCRIPTOR_INTERACTIVE_MANAGER)
+            data.writeString(weatherJsonOrString)
+            val ok = binder.transact(DeepalS05Property.INCALL_CMD_WEATHER_TIME_INFO, data, reply, 0)
+            if (ok) {
+                reply.readException()
+                return@withContext true
+            }
+        } catch (e: Throwable) {
+            Log.e(TAG, "sendWeatherInfo failed: ${e.message}")
+        } finally {
+            data.recycle()
+            reply.recycle()
+        }
+        false
+    }
+
+    /**
+     * Sends media playback track title / source string to HUD (Transact 0x25 / 37).
+     */
+    suspend fun sendMediaSource(sourceTitle: String): Boolean = withContext(Dispatchers.IO) {
+        val binder = getInteractiveService() ?: return@withContext false
+        val data = Parcel.obtain()
+        val reply = Parcel.obtain()
+        try {
+            data.writeInterfaceToken(DeepalS05Property.INCALL_DESCRIPTOR_INTERACTIVE_MANAGER)
+            data.writeString(sourceTitle)
+            val ok = binder.transact(DeepalS05Property.INCALL_CMD_MEDIA_SOURCE, data, reply, 0)
+            if (ok) {
+                reply.readException()
+                return@withContext true
+            }
+        } catch (e: Throwable) {
+            Log.e(TAG, "sendMediaSource failed: ${e.message}")
+        } finally {
+            data.recycle()
+            reply.recycle()
+        }
+        false
+    }
+
+    /**
+     * Sends media track album and artist info to HUD (Transact 0x26 / 38).
+     */
+    suspend fun sendMediaAlbum(sourceType: Int, title: String, artist: String): Boolean = withContext(Dispatchers.IO) {
+        val binder = getInteractiveService() ?: return@withContext false
+        val data = Parcel.obtain()
+        val reply = Parcel.obtain()
+        try {
+            data.writeInterfaceToken(DeepalS05Property.INCALL_DESCRIPTOR_INTERACTIVE_MANAGER)
+            data.writeInt(sourceType)
+            data.writeString(title)
+            data.writeString(artist)
+            val ok = binder.transact(DeepalS05Property.INCALL_CMD_MEDIA_TIME, data, reply, 0)
+            if (ok) {
+                reply.readException()
+                return@withContext true
+            }
+        } catch (e: Throwable) {
+            Log.e(TAG, "sendMediaAlbum failed: ${e.message}")
+        } finally {
+            data.recycle()
+            reply.recycle()
+        }
+        false
+    }
+
+    /**
+     * Sends media playback progress timer to HUD (Transact 0x27 / 39).
+     */
+    suspend fun sendMediaPlayTime(currentSec: Int, totalSec: Int, playStatus: Int = 1): Boolean = withContext(Dispatchers.IO) {
+        val binder = getInteractiveService() ?: return@withContext false
+        val data = Parcel.obtain()
+        val reply = Parcel.obtain()
+        try {
+            data.writeInterfaceToken(DeepalS05Property.INCALL_DESCRIPTOR_INTERACTIVE_MANAGER)
+            data.writeInt(currentSec)
+            data.writeInt(totalSec)
+            data.writeInt(playStatus)
+            val ok = binder.transact(DeepalS05Property.INCALL_CMD_MEDIA_ALBUM_ICON, data, reply, 0)
+            if (ok) {
+                reply.readException()
+                return@withContext true
+            }
+        } catch (e: Throwable) {
+            Log.e(TAG, "sendMediaPlayTime failed: ${e.message}")
+        } finally {
+            data.recycle()
+            reply.recycle()
+        }
+        false
+    }
+
+    /**
+     * Sends incoming / active phone call info string to HUD (Transact 0x2a / 42).
+     */
+    suspend fun sendCallInfo(callInfo: String): Boolean = withContext(Dispatchers.IO) {
+        val binder = getInteractiveService() ?: return@withContext false
+        val data = Parcel.obtain()
+        val reply = Parcel.obtain()
+        try {
+            data.writeInterfaceToken(DeepalS05Property.INCALL_DESCRIPTOR_INTERACTIVE_MANAGER)
+            data.writeString(callInfo)
+            val ok = binder.transact(DeepalS05Property.INCALL_CMD_CALL_INFO, data, reply, 0)
+            if (ok) {
+                reply.readException()
+                return@withContext true
+            }
+        } catch (e: Throwable) {
+            Log.e(TAG, "sendCallInfo failed: ${e.message}")
+        } finally {
+            data.recycle()
+            reply.recycle()
+        }
+        false
+    }
+
+    /**
+     * Sends caller contact avatar url or file path to HUD (Transact 0x2b / 43).
+     */
+    suspend fun sendCallHead(avatarUrlOrPath: String): Boolean = withContext(Dispatchers.IO) {
+        val binder = getInteractiveService() ?: return@withContext false
+        val data = Parcel.obtain()
+        val reply = Parcel.obtain()
+        try {
+            data.writeInterfaceToken(DeepalS05Property.INCALL_DESCRIPTOR_INTERACTIVE_MANAGER)
+            data.writeString(avatarUrlOrPath)
+            val ok = binder.transact(DeepalS05Property.INCALL_CMD_CALL_TIME, data, reply, 0)
+            if (ok) {
+                reply.readException()
+                return@withContext true
+            }
+        } catch (e: Throwable) {
+            Log.e(TAG, "sendCallHead failed: ${e.message}")
+        } finally {
+            data.recycle()
+            reply.recycle()
+        }
+        false
+    }
+
+    /**
+     * Sends call duration elapsed time in seconds to HUD (Transact 0x2c / 44).
+     */
+    suspend fun sendCallTime(callDurationSec: Int): Boolean = withContext(Dispatchers.IO) {
+        val binder = getInteractiveService() ?: return@withContext false
+        val data = Parcel.obtain()
+        val reply = Parcel.obtain()
+        try {
+            data.writeInterfaceToken(DeepalS05Property.INCALL_DESCRIPTOR_INTERACTIVE_MANAGER)
+            data.writeInt(callDurationSec)
+            val ok = binder.transact(DeepalS05Property.INCALL_CMD_CALL_AVATAR, data, reply, 0)
+            if (ok) {
+                reply.readException()
+                return@withContext true
+            }
+        } catch (e: Throwable) {
+            Log.e(TAG, "sendCallTime failed: ${e.message}")
+        } finally {
+            data.recycle()
+            reply.recycle()
+        }
+        false
+    }
+
+    /**
+     * Sends voice assistant recognition state string to HUD (Transact 0x23 / 35).
+     */
+    suspend fun sendVoiceStatus(status: String): Boolean = withContext(Dispatchers.IO) {
+        val binder = getInteractiveService() ?: return@withContext false
+        val data = Parcel.obtain()
+        val reply = Parcel.obtain()
+        try {
+            data.writeInterfaceToken(DeepalS05Property.INCALL_DESCRIPTOR_INTERACTIVE_MANAGER)
+            data.writeString(status)
+            val ok = binder.transact(DeepalS05Property.INCALL_CMD_VR_STATUS, data, reply, 0)
+            if (ok) {
+                reply.readException()
+                return@withContext true
+            }
+        } catch (e: Throwable) {
+            Log.e(TAG, "sendVoiceStatus failed: ${e.message}")
+        } finally {
+            data.recycle()
+            reply.recycle()
+        }
+        false
+    }
+
+    /**
+     * Sends parsed voice recognition intent / response string to HUD (Transact 0x24 / 36).
+     */
+    suspend fun sendVoiceResult(result: String): Boolean = withContext(Dispatchers.IO) {
+        val binder = getInteractiveService() ?: return@withContext false
+        val data = Parcel.obtain()
+        val reply = Parcel.obtain()
+        try {
+            data.writeInterfaceToken(DeepalS05Property.INCALL_DESCRIPTOR_INTERACTIVE_MANAGER)
+            data.writeString(result)
+            val ok = binder.transact(DeepalS05Property.INCALL_CMD_VR_RESULT, data, reply, 0)
+            if (ok) {
+                reply.readException()
+                return@withContext true
+            }
+        } catch (e: Throwable) {
+            Log.e(TAG, "sendVoiceResult failed: ${e.message}")
+        } finally {
+            data.recycle()
+            reply.recycle()
+        }
+        false
+    }
+
+    /**
      * Requests HUD navigation audio and display focus (Transact 0x3f / 63).
      */
     suspend fun requestNaviFocus(packageName: String = "com.deepalnav"): Boolean = withContext(Dispatchers.IO) {

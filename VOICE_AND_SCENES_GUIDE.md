@@ -100,8 +100,8 @@ class DeepalSpeechManager(private val context: Context) {
 
 | Spoken Phrase | Triggered Hardware Action | Description |
 |:---|:---|:---|
-| *"Open the sunroof"* / *"Close sunroof"* | `setSunroofShade(1 / 2)` | Opens or closes the electric sunroof shade (`0x31400313`) |
-| *"Open trunk"* / *"Close trunk"* | `setTailgate(true / false)` | Controls power liftgate (`0x31400314`) |
+| *"Open the sunroof"* / *"Close sunroof"* | `setSunroofShade(1 / 2)` | Opens or closes the electric sunroof shade (`wt.vehiclesetting` Transact `0x40`) |
+| *"Open trunk"* / *"Close trunk"* | `setTailgate(true / false)` | Actuates power liftgate (`0x31400313` / `0x31400314`) |
 | *"Turn on driver seat massage"* | `setSeatMassage(true, mode=1, level=3)` | Activates massage for driver (`0x31400b2f`, `0x31400b31`, `0x31400b30`) |
 | *"I'm feeling hot"* / *"Rapid cool"* | `applyScene("RAPID_COOL")` | Max AC (`0x3540010b`), blower level 7, max seat ventilation (`0x35400111`) |
 | *"Defrost the windshield"* | `applyScene("DEFROST")` | Front max defroster (`0x33400103`), rear defroster (`0x3540010c`) |

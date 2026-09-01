@@ -223,6 +223,62 @@
                         android:text="REAR DEF"
                         android:textSize="10sp" />
                 </LinearLayout>
+
+                <!-- Airflow Wind Direction Selector -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="Airflow Vent Direction"
+                    android:textColor="@color/brand_text_secondary"
+                    android:textSize="12sp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnWindFace"
+                        style="@style/AutomotiveButton"
+                        android:layout_width="0dp"
+                        android:layout_height="38dp"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="3dp"
+                        android:text="Face (9)"
+                        android:textSize="10sp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnWindFeet"
+                        style="@style/AutomotiveButton"
+                        android:layout_width="0dp"
+                        android:layout_height="38dp"
+                        android:layout_weight="1"
+                        android:layout_marginHorizontal="2dp"
+                        android:text="Feet (10)"
+                        android:textSize="10sp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnWindDual"
+                        style="@style/AutomotiveButton"
+                        android:layout_width="0dp"
+                        android:layout_height="38dp"
+                        android:layout_weight="1"
+                        android:layout_marginHorizontal="2dp"
+                        android:text="Dual (11)"
+                        android:textSize="10sp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnWindDefrost"
+                        style="@style/AutomotiveButton"
+                        android:layout_width="0dp"
+                        android:layout_height="38dp"
+                        android:layout_weight="1"
+                        android:layout_marginStart="3dp"
+                        android:text="Def (8)"
+                        android:textSize="10sp" />
+                </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 

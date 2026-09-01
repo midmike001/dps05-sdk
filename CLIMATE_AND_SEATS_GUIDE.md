@@ -75,7 +75,30 @@ suspend fun configureBlowerAndDefrost() {
 
 ---
 
-## 4. Seat Heating, Ventilation & Pneumatic Massage
+## 4. Airflow Vent Distribution (Wind Direction)
+
+The HVAC system supports discrete vent airflow distribution paths:
+- `WIND_DIRECTION_DEFROST = 8`: Windshield defrost vents
+- `WIND_DIRECTION_FACE = 9`: Dashboard / Face vents
+- `WIND_DIRECTION_FEET = 10`: Footwell / Floor vents
+- `WIND_DIRECTION_FACE_FEET = 11`: Dual Face + Feet vents
+
+```kotlin
+suspend fun configureAirflowDirection() {
+    // Direct airflow to Face vents
+    client.setWindDirection(DeepalS05Property.WIND_DIRECTION_FACE)
+
+    // Direct airflow to Footwell vents
+    client.setWindDirection(DeepalS05Property.WIND_DIRECTION_FEET)
+
+    // Direct airflow to Windshield Defrost vents
+    client.setWindDirection(DeepalS05Property.WIND_DIRECTION_DEFROST)
+}
+```
+
+---
+
+## 5. Seat Heating, Ventilation & Pneumatic Massage
 
 ### Seat Levels & Area Identifiers
 - **Driver Seat**: `DeepalS05Property.AREA_DRIVER = 1`

@@ -70,3 +70,23 @@ suspend fun controlPreconditioning() {
     client.setBatteryPreconditioning(enabled = false)
 }
 ```
+
+---
+
+## 4. Driving Dynamics Modes (`PROP_DRIVE_MODE = 0x3140040d`)
+
+The Deepal S05 powertrain controller supports 4 driving mode presets:
+- `DRIVE_MODE_COMFORT = 1`: Standard balanced regeneration and steering weight (`\u8212\u9002`)
+- `DRIVE_MODE_SPORT = 2`: Instant torque response, firm suspension tuning (`\u8fd0\u52a8`)
+- `DRIVE_MODE_ECO = 3`: Maximum efficiency, optimized energy recovery (`\u7ecf\u6d4e`)
+- `DRIVE_MODE_CUSTOM = 4`: User configurable response curves (`\u81ea\u5b9a\u4e49`)
+
+```kotlin
+suspend fun setPowertrainMode() {
+    // Switch to Sport Mode for mountain driving
+    client.setDriveMode(DeepalS05Property.DRIVE_MODE_SPORT)
+
+    // Switch to Eco Mode for highway range preservation
+    client.setDriveMode(DeepalS05Property.DRIVE_MODE_ECO)
+}
+```

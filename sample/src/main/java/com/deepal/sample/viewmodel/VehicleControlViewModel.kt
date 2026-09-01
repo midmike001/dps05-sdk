@@ -160,6 +160,34 @@ class VehicleControlViewModel : ViewModel() {
         }
     }
 
+    fun setWindDirection(mode: Int) {
+        val modeStr = when (mode) {
+            DeepalS05Property.WIND_DIRECTION_DEFROST -> "DEFROST"
+            DeepalS05Property.WIND_DIRECTION_FACE -> "FACE"
+            DeepalS05Property.WIND_DIRECTION_FEET -> "FEET"
+            DeepalS05Property.WIND_DIRECTION_FACE_FEET -> "FACE+FEET"
+            else -> "FACE"
+        }
+        viewModelScope.launch {
+            client.setWindDirection(mode)
+            logAction("HVAC Wind Direction set to $modeStr ($mode)")
+        }
+    }
+
+    fun setDriveMode(mode: Int) {
+        val modeStr = when (mode) {
+            DeepalS05Property.DRIVE_MODE_COMFORT -> "COMFORT"
+            DeepalS05Property.DRIVE_MODE_SPORT -> "SPORT"
+            DeepalS05Property.DRIVE_MODE_ECO -> "ECO"
+            DeepalS05Property.DRIVE_MODE_CUSTOM -> "CUSTOM"
+            else -> "COMFORT"
+        }
+        viewModelScope.launch {
+            client.setDriveMode(mode)
+            logAction("Drive Dynamics Mode set to $modeStr ($mode)")
+        }
+    }
+
     // --- Seats Comfort ---
     fun setDriverSeatHeat(level: Int) {
         viewModelScope.launch {
@@ -220,7 +248,7 @@ class VehicleControlViewModel : ViewModel() {
         viewModelScope.launch {
             client.setSunroofShade(action)
             val actionStr = when (action) { 1 -> "OPEN"; 2 -> "CLOSE"; else -> "STOP" }
-            logAction("Sunroof Sunshade action: $actionStr")
+            logAction("Sunroof Sunshade action: $actionStr (wt.vehiclesetting)")
         }
     }
 
@@ -228,7 +256,7 @@ class VehicleControlViewModel : ViewModel() {
         val next = !telemetry.value.isTailgateOpen
         viewModelScope.launch {
             client.setTailgate(next)
-            logAction("Tailgate set to ${if (next) "OPEN" else "CLOSED"} (PROP_TAILGATE = 0x31400314)")
+            logAction("Tailgate set to ${if (next) "OPEN" else "CLOSED"} (PROP_TAILGATE_CONTROL = 0x31400313)")
         }
     }
 
@@ -237,6 +265,36 @@ class VehicleControlViewModel : ViewModel() {
         viewModelScope.launch {
             client.setDoorLock(next)
             logAction("Door Central Locks set to ${if (next) "LOCKED" else "UNLOCKED"}")
+        }
+    }
+
+    fun toggleDoorHandles() {
+        val next = !telemetry.value.doorHandlesExpanded
+        viewModelScope.launch {
+            client.setDoorHandleExpanded(next)
+            logAction("Flush Door Handles set to ${if (next) "EXPANDED" else "RETRACTED"}")
+        }
+    }
+
+    fun toggleMirrorFold() {
+        val next = !telemetry.value.mirrorsFolded
+        viewModelScope.launch {
+            client.setMirrorFold(next)
+            logAction("Power Side Mirrors set to ${if (next) "FOLDED" else "UNFOLDED"}")
+        }
+    }
+
+    fun openFuelCap() {
+        viewModelScope.launch {
+            client.openFuelCap()
+            logAction("Fuel Cap / Charge Port solenoid triggered")
+        }
+    }
+
+    fun openGloveBox() {
+        viewModelScope.launch {
+            client.openGloveBox()
+            logAction("Electronic Glove Box solenoid released")
         }
     }
 

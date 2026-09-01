@@ -18,13 +18,13 @@ Reverse engineered 100% from the Changan OpenOS system framework and verified ag
   - Battery SoC % (`0x3140028c`, Area `0x1b`), remaining range (EV DTE `0x31400501`, Display DTE `0x31600205`, km), total odometer (`0x31600204`, raw meters / `1000f` = km).
   - Real-time Tyre Pressure Monitoring (TPMS) in Bar (`0x37600211`, Areas: FL `0x01`, FR `0x02`, RL `0x04`, RR `0x08`).
   - Individual 4-Door open/closed sensing (`0x36400311`, Areas: FL `0x01`, FR `0x04`, RL `0x10`, RR `0x40`).
-  - Power window states, central door locks (`0x314003eb`), power tailgate (`0x31400314`), and electric sunroof shade (`0x31400313`).
+  - Power window states, central door locks (`0x314003eb`), power tailgate actuation (`0x31400313`) & position (`0x31400314`), and electric sunroof shade (`wt.vehiclesetting` Transact `0x40`).
   - REEV & Journey energy consumption metrics (kWh/100km `0x314005a6`, L/100km `0x314005ce`, electric/fuel distances and drive durations).
   - Cabin internal thermometer (`0x38600112`) and exterior temperature (`0x35600403`).
 - **Complete Vehicle Actuation**:
   - **Dual-Zone Climate Control**: 17.5°C to 32.5°C (`0x35600105`) in 0.5°C steps, 8 fan blower speeds (`0x35400109`), AC toggle (`0x35400102`), front defrost (`0x33400103`, Area 1), rear defrost (`0x3540010c` / `0x33400103`, Area 2), auto climate (`0x35400104`), max AC (`0x3540010b`), air recirculation (`0x35400108`: 2=Recirc, 1=Fresh), sync mode (`0x3540010d`).
   - **Seat Comfort**: 3-level seat ventilation (`0x35400111`) & heating (`0x3540010f` & `0x1540050b`) for driver (Area 1) and passenger (Area 4), plus pneumatic seat massage toggle (`0x31400b2f`), modes 1-3 (`0x31400b31`), and intensity levels 1-8 (`0x31400b30`), steering wheel heating (`0x314003eb`).
-  - **Body & Access**: Power window control (FL `0x10`, FR `0x40`, RL `0x100`, RR `0x400` via `0x33400301`), window lock (`0x31400303`), electric sunroof shade (`0x31400313`), power tailgate (`0x31400314`), central locks (`0x314003eb`).
+  - **Body & Access**: Power window control (FL `0x10`, FR `0x40`, RL `0x100`, RR `0x400` via `0x33400301`), window lock (`0x31400303`), electric sunroof shade (0..100% via `wt.vehiclesetting`), power tailgate (`0x31400313` / `0x31400314`), central locks (`0x314003eb`).
   - **Cabin Environment**: Ambient lighting colors 1-6 (`0x3140039a`) & brightness 0-100% (`0x3140039b`), PM2.5 air purifier (`0x35400122`).
   - **Outside Speaker Audio & Speech TTS**: Outside music event (`0x66`), In-Cabin TTS (`0x1b`), Outside Speaker TTS broadcast (`0x62`) via `VrLogicService`.
   - **Smart Scenes**: Rapid Cool, Nap/Rest, Quick Defrost, Camp Mode.
@@ -46,7 +46,7 @@ The SDK includes dedicated, in-depth architectural and development manuals:
 |:---|:---|:---|
 | 🖥️ **[HUD Development Guide](HUD_DEVELOPMENT_GUIDE.md)** | Windshield Presentation & AR-HUD | 800x480 secondary display, optical window crop (`573, 167`), centered turn arrows, InCall IPC codes (`0x16`, `0x17`, `0x18`, `0x19`, `0x1a`, `0x1b`, `0x1c`, `0x3f`, `0x40`). |
 | ❄️ **[Climate & Seats Guide](CLIMATE_AND_SEATS_GUIDE.md)** | HVAC & Comfort | Dual-zone climate, 17.5°C-32.5°C in 0.5°C steps, cabin internal thermometer, 8 fan speeds, 3-level seat ventilation & heating, pneumatic massage modes (1-3, levels 1-8), memory presets. |
-| 🚪 **[Body & Access Control Guide](BODY_CONTROL_GUIDE.md)** | Body Domains, Doors & Windows | 4-door position sensing (`0x36400311`), power windows (FL, FR, RL, RR), window lock, electric sunroof roller blind, power tailgate (`0x31400314`), door locks, Rain-Sensing Auto Guardian. |
+| 🚪 **[Body & Access Control Guide](BODY_CONTROL_GUIDE.md)** | Body Domains, Doors & Windows | 4-door position sensing (`0x36400311`), power windows (FL, FR, RL, RR), window lock, electric sunroof roller blind (`wt.vehiclesetting`), power tailgate (`0x31400313` / `0x31400314`), door locks, Rain-Sensing Auto Guardian. |
 | ⚡ **[EV Battery & Charging Guide](EV_BATTERY_CHARGING_GUIDE.md)** | BMS & Power Dynamics | Battery SoC % (Area `0x1b`), EV & Display DTE range estimation, TPMS Float pressures in Bar, REEV trip energy consumption, DC fast-charging thermal preconditioning (`0x314006c6`). |
 | 🎙️ **[Voice & Cockpit Scenes Guide](VOICE_AND_SCENES_GUIDE.md)** | Voice AI, Outside Audio & Scenes | "Hello Deepal" wake word, spoken phrase dispatcher, outside speaker music (`0x66`) and speech TTS broadcast (`0x62`), Rapid Cool, Nap, Defrost, and Camp mode automations. |
 | 🔌 **[AIDL Property Bus Guide](AIDL_PROPERTY_BUS_GUIDE.md)** | Low-Level Hardware Interface | Direct Binder IPC, `IVirtualCar`, `IVirturalCarProperty`, `VirtualCarValue` parcelable, area masks, reflection, and reverse engineering mappings. |
@@ -135,8 +135,8 @@ lifecycleScope.launch {
     client.setSeatMassage(enabled = true, mode = 1, level = 3)
 
     // 3. Body & Access
-    client.setSunroofShade(action = 1) // 1=Open, 2=Close
-    client.setTailgate(open = false)   // Uses PROP_TAILGATE = 0x31400314
+    client.setSunroofShade(actionOrPercent = 1) // 1=Open (100%), 2=Close (0%) via wt.vehiclesetting
+    client.setTailgate(open = false)   // Uses PROP_TAILGATE_CONTROL = 0x31400313
     client.setDoorLock(locked = true)
 
     // 4. EV Fast-Charging Battery Preconditioning

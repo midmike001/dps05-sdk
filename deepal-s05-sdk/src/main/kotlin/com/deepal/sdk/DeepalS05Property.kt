@@ -1,66 +1,89 @@
 package com.deepal.sdk
 
 /**
- * Vehicle hardware property IDs, area configurations, and transaction codes
- * for Changan Deepal S05 (Platform Model C857 / EPA OpenOS Platform).
+ * Hardware and VHAL property definitions for the Changan Deepal S05 (Platform C857 / EPA OpenOS).
  *
- * Verified against decompiled Changan OpenOS system framework and OEM launcher
- * package `com.deepalhome.launcher` (Deepal+ v26.0521).
+ * Reverse-engineered and verified against ground truth Changan OpenOS system framework and
+ * decompiled OEM launcher `com.deepalhome.launcher` (`d+`).
  */
 object DeepalS05Property {
-    const val PLATFORM_ID = "deepal-s05"
-    const val PLATFORM_LABEL = "Deepal S05"
-    const val INTERNAL_CODE = "C857"
 
-    // Services and Descriptors
+    // OpenOS VirtualCar System Service Identifiers
     const val VIRTUALCAR_SERVICE = "virtualcar_service"
     const val VIRTUALCAR_PROPERTY_SERVICE = "virtualcar_property_service"
     const val DESCRIPTOR_VIRTUAL_CAR = "com.openos.virtualcar.IVirtualCar"
-    const val DESCRIPTOR_PROPERTY = "com.openos.virtualcar.IVirturalCarProperty" // Changan OEM spelling with 'r'
+    const val DESCRIPTOR_VIRTUAL_CAR_PROPERTY = "com.openos.virtualcar.IVirturalCarProperty"
+    const val DESCRIPTOR_VIRTUAL_CAR_LISTENER = "com.openos.virtualcar.IVirtualCarPropertyEventListener"
 
-    // Vehicle Specifications & Boundaries
-    const val BATTERY_CAPACITY_KWH = 56.12f
-    const val TEMP_MIN_C = 17.5f
-    const val TEMP_MAX_C = 32.5f
+    // Vehicle Settings Service (wt.vehiclesetting) Identifiers & Transacts
+    const val VEHICLE_SETTING_SERVICE = "wt.vehiclesetting"
+    const val DESCRIPTOR_VEHICLE_SETTING = "com.openos.settings.vehiclesettings.IVehicleSettingInterface"
+    const val TRANSACT_GET_SUNSHADE_POS = 0x3f              // 63: getSunshadePos() -> int (0..100)
+    const val TRANSACT_SET_SUNSHADE_POS = 0x40              // 64: setSunshadePos(int pos) (0..100)
+    const val TRANSACT_GET_SUNSHADE_MOVE_STATUS = 0x41      // 65: getSunshadeMoveStatus() -> int
+    const val TRANSACT_GET_SUNROOF_POS = 0x3a               // 58: getSunroofPos() -> int (0..100)
+    const val TRANSACT_SET_SUNROOF_POS = 0x3b               // 59: setSunroofPos(int pos) (0..100)
+    const val TRANSACT_SET_SUNROOF_TILT = 0x3c              // 60: setSunroofTiltStatus(int tilt)
+    const val TRANSACT_GET_SUNROOF_MOVE_STATUS = 0x3d       // 61: getSunroofMoveStatus() -> int
+    const val TRANSACT_GET_SUNROOF_RAIN_DETECT = 0x42       // 66: getSunroofrainDetectcloseSw() -> boolean
+    const val TRANSACT_SET_SUNROOF_RAIN_DETECT = 0x43       // 67: setSunroofrainDetectcloseSw(boolean)
+    const val TRANSACT_GET_SMART_WELCOME_UNLOCK = 0x4c      // 76: getSmartWelcomeUnlockSw() -> boolean
+    const val TRANSACT_SET_SMART_WELCOME_UNLOCK = 0x4d      // 77: setSmartWelcomeUnlockSw(boolean)
+    const val TRANSACT_GET_SMART_LEAVING_LOCK = 0x4e        // 78: getSmartLeavingLockSw() -> boolean
+    const val TRANSACT_SET_SMART_LEAVING_LOCK = 0x4f        // 79: setSmartLeavingLockSw(boolean)
+    const val TRANSACT_GET_SMART_TRUNK_UNLOCK = 0x50        // 80: getSmartTrunkulockSw() -> boolean
+    const val TRANSACT_SET_SMART_TRUNK_UNLOCK = 0x51        // 81: setSmartTrunkulockSw(boolean)
+    const val TRANSACT_GET_MIRROR_AUTOFOLD = 0x58           // 88: getMirrorAutofoldSw() -> boolean
+    const val TRANSACT_SET_MIRROR_AUTOFOLD = 0x59           // 89: setMirrorAutofoldSw(boolean)
+    const val TRANSACT_GET_WIRELESS_CHARGE = 0x5a           // 90: getWirelessChargeSw() -> boolean
+    const val TRANSACT_SET_WIRELESS_CHARGE = 0x5b           // 91: setWirelessChargeSw(boolean)
+    const val TRANSACT_GET_HUD_SWITCH = 0x82                // 130: getHudSwitchStatus() -> boolean
+    const val TRANSACT_SET_HUD_SWITCH = 0x83                // 131: setHudSwitchStatus(boolean)
+    const val TRANSACT_GET_HUD_BRIGHT = 0x84                // 132: getHudBright() -> int
+    const val TRANSACT_SET_HUD_BRIGHT = 0x85                // 133: setHudBright(int)
+    const val TRANSACT_GET_HUD_HEIGHT = 0x86                // 134: getHudHeight() -> int
+    const val TRANSACT_SET_HUD_HEIGHT = 0x87                // 135: setHudHeight(int)
+    const val TRANSACT_GET_HUD_DISPLAY_PHONE = 0x8e         // 142: getHudDisplayPhone() -> boolean
+    const val TRANSACT_SET_HUD_DISPLAY_PHONE = 0x8f         // 143: setHudDisplayPhone(boolean)
+    const val TRANSACT_GET_HUD_DISPLAY_NAV = 0x90           // 144: getHudDisplayNav() -> boolean
+    const val TRANSACT_SET_HUD_DISPLAY_NAV = 0x91           // 145: setHudDisplayNav(boolean)
 
     // Area IDs
     const val AREA_GLOBAL = 0
-    const val AREA_DRIVER = 1
-    const val AREA_PASSENGER = 4
-    const val AREA_SOC = 0x1b              // 27: Battery State of Charge Area
+    const val AREA_DRIVER = 1          // Left zone / Driver
+    const val AREA_PASSENGER = 4       // Right zone / Front Passenger
+    const val AREA_SOC = 0x1b          // 27: Battery State of Charge Area
 
-    // Door Area Bitmasks (Property 0x36400311)
-    const val AREA_DOOR_FL = 0x01          // Front-Left (Driver) Door
-    const val AREA_DOOR_FR = 0x04          // Front-Right (Passenger) Door
-    const val AREA_DOOR_RL = 0x10          // Rear-Left Door
-    const val AREA_DOOR_RR = 0x40          // Rear-Right Door
-    const val AREA_DOORS_ALL = 0x55        // All 4 passenger doors mask (0x01 or 0x04 or 0x10 or 0x40)
+    // Door Bitmasks (PROP_DOORS = 0x36400311)
+    const val AREA_DOOR_FL = 0x01      // Front-Left (Driver) Door
+    const val AREA_DOOR_FR = 0x04      // Front-Right (Passenger) Door
+    const val AREA_DOOR_RL = 0x10      // Rear-Left Door
+    const val AREA_DOOR_RR = 0x40      // Rear-Right Door
 
-    // Window Area Identifiers (Property 0x33400301)
-    const val AREA_WINDOW_FL = 0x010       // Front-Left Driver Window
-    const val AREA_WINDOW_FR = 0x040       // Front-Right Passenger Window
-    const val AREA_WINDOW_RL = 0x100       // Rear-Left Passenger Window
-    const val AREA_WINDOW_RR = 0x400       // Rear-Right Passenger Window
+    // Window Area Constants (PROP_WINDOW_MOVE = 0x33400301)
+    const val AREA_WINDOW_FL = 0x010   // Front-Left Window
+    const val AREA_WINDOW_FR = 0x040   // Front-Right Window
+    const val AREA_WINDOW_RL = 0x100   // Rear-Left Window
+    const val AREA_WINDOW_RR = 0x400   // Rear-Right Window
 
-    // Tire Area Identifiers (Property 0x37600211)
-    const val AREA_TIRE_FL = 0x01          // Front-Left Tire
-    const val AREA_TIRE_FR = 0x02          // Front-Right Tire
-    const val AREA_TIRE_RL = 0x04          // Rear-Left Tire
-    const val AREA_TIRE_RR = 0x08          // Rear-Right Tire
+    // Tire Area Constants (PROP_TIRE_PRESSURE = 0x37600211)
+    const val AREA_TIRE_FL = 0x01      // Front-Left Tire
+    const val AREA_TIRE_FR = 0x02      // Front-Right Tire
+    const val AREA_TIRE_RL = 0x04      // Rear-Left Tire
+    const val AREA_TIRE_RR = 0x08      // Rear-Right Tire
 
-    // Defrost Area Identifiers (Property 0x33400103)
-    const val AREA_DEFROST_FRONT = 1       // Front Windshield Defrost
-    const val AREA_DEFROST_REAR = 2        // Rear Windshield & Mirror Defrost
-
-    // Vehicle Telemetry Signals (Read)
-    const val PROP_BATTERY_SOC = 0x3140028c        // Int: 0-100% (Area: AREA_SOC = 0x1b)
-    const val PROP_REMAINING_RANGE = 0x314006c4    // Int: km (Area: 0)
-    const val PROP_REMAINING_RANGE_EV_DTE = 0x31400501 // Int: EV DTE (alias vc_alias_e_dte / vc_alias_left_ev_dte, Area: 0)
-    const val PROP_REMAINING_RANGE_DISP_DTE = 0x31600205 // Int: Display DTE (alias vc_alias_disp_dte, Area: 0)
+    // Powertrain & Battery Properties (Read)
+    const val PROP_BATTERY_SOC = 0x3140028c        // Int: 0 - 100% (Area: 0x1b)
+    const val PROP_REMAINING_RANGE_EV_DTE = 0x31400501 // Int: EV pure electric DTE (km, Area: 0, alias vc_alias_left_ev_dte)
+    const val PROP_REMAINING_RANGE_DISP_DTE = 0x31600205 // Int: Displayed remaining DTE (km, Area: 0, alias vc_alias_disp_dte)
     const val PROP_REMAINING_RANGE_RAW = 0x3140028d // Int: Fallback Raw DTE (Area: 0)
     const val PROP_ODOMETER = 0x31600204           // Raw reading in meters, scale divisor = 1000f -> km (Area: 0)
     const val ODOMETER_SCALE_DIVISOR = 1000f
-    const val PROP_GEAR_SELECTION = 0x31400231     // Int: 1=P, 2=R, 3=N, 4=D (Area: 0)
+    const val PROP_GEAR_SELECTION = 0x31400231     // Int: 0/4=P, 1=N, 2=R, 3/8=D (Area: 0, alias vc_alias_vehicle_gear)
+    const val GEAR_RAW_PARK = 4                    // Raw gear P code (or 0)
+    const val GEAR_RAW_NEUTRAL = 1                 // Raw gear N code
+    const val GEAR_RAW_REVERSE = 2                 // Raw gear R code
+    const val GEAR_RAW_DRIVE = 3                   // Raw gear D code (or 8)
     const val PROP_VEHICLE_SPEED_VHAL = 0x11600207 // Standard VHAL Float vehicle speed
     const val PROP_VEHICLE_SPEED_VC = 0x31600202   // OpenOS VirtualCar Float vehicle speed (alias vc_alias_vehicle_speed)
     const val PROP_EXTERIOR_TEMP = 0x35600403      // Float: °C (Area: 0)
@@ -90,6 +113,10 @@ object DeepalS05Property {
     const val PROP_HVAC_AC_ON = 0x35400102         // Int: 1=On, 2=Off (Area: 1)
     const val PROP_HVAC_AUTO = 0x35400104          // Int: 1=Auto, 2=Manual (Area: 1)
     const val PROP_HVAC_FAN_DIRECTION = 0x35400107 // Int: Air vent blow direction (Area: 1)
+    const val WIND_DIRECTION_DEFROST = 8           // Windshield defrost vents
+    const val WIND_DIRECTION_FACE = 9              // Face blower vents
+    const val WIND_DIRECTION_FEET = 10             // Floor feet vents
+    const val WIND_DIRECTION_FACE_FEET = 11        // Face + Feet dual vents
     const val PROP_HVAC_RECIRC = 0x35400108        // Int: 2=Recirc, 1=Fresh air (Vendor Tri-State: 2=Recirc, 1=Fresh)
     const val PROP_HVAC_FAN_SPEED = 0x35400109     // Int: 1 - 8 (Area: 1)
     const val PROP_HVAC_GENERATOR = 0x3540010a     // Int: HVAC generator mode (Area: 1)
@@ -100,7 +127,11 @@ object DeepalS05Property {
     const val PROP_HVAC_INTERNAL_TEMP = 0x38600112 // Float: Cabin internal temperature °C (Area: 1)
     const val PROP_CAR_POWER_ON = 0x31400201       // Int: Vehicle power status (1=On, 2=Off, Area: 1)
     const val PROP_AEB_SWITCH = 0x31400244         // Int: 1=On, 2=Off (Area: 0)
-    const val PROP_DRIVE_MODE = 0x3140040d         // Int: 1=ECO, 2=COMFORT, 3=SPORT, 4=CUSTOM (Area: 0)
+    const val PROP_DRIVE_MODE = 0x3140040d         // Int: 1=COMFORT, 2=SPORT, 3=ECO, 4=CUSTOM (Area: 0, alias vc_alias_drive_style)
+    const val DRIVE_MODE_COMFORT = 1
+    const val DRIVE_MODE_SPORT = 2
+    const val DRIVE_MODE_ECO = 3
+    const val DRIVE_MODE_CUSTOM = 4
 
     // Comfort & Seats (Read/Write)
     const val PROP_SEAT_HEATING = 0x3540010f       // Int: 0=Off, 1=Low, 2=Med, 3=High (Area: 1=Driver, 4=Passenger)
@@ -113,11 +144,14 @@ object DeepalS05Property {
 
     // Windows & Access (Read/Write)
     const val PROP_DOORS = 0x36400311             // Int: Door position / open state (Areas: FL=0x01, FR=0x04, RL=0x10, RR=0x40)
-    const val PROP_WINDOW_MOVE = 0x33400301        // Int: 1=Open, 2=Close, 0=Stop (Area: 0x10, 0x40, 0x100, 0x400)
-    const val PROP_WINDOW_LOCK = 0x31400303        // Int: 1=Locked, 0=Unlocked (Area: 0)
-    const val PROP_SUNROOF_SHADE = 0x31400313      // Int: 1=Open, 2=Close, 3=Vent (Area: 0)
-    const val PROP_TAILGATE = 0x31400314           // Int: 1=Open, 2=Close (Area: 0, alias vc_alias_door_trunk_pos)
-    const val PROP_DOOR_LOCK = 0x314003eb          // Int: 1=Locked, 2=Unlocked (Area: 0)
+    const val PROP_WINDOW_POS = 0x33400300        // Int: 0..100% Window Position (0=Closed, 100=Fully Open, Areas: 0x10, 0x40, 0x100, 0x400)
+    const val PROP_WINDOW_POS_VC = 0x31400300     // Int: VirtualCar Window Position fallback
+    const val PROP_WINDOW_MOVE = 0x33400301       // Int: Rate/Direction (-100=Express Close, 100=Express Open, 0=Stop)
+    const val PROP_WINDOW_LOCK = 0x31400303       // Int: 1=Locked, 0=Unlocked (Area: 0)
+    const val PROP_TAILGATE_CONTROL = 0x31400313  // Int: Tailgate Actuation Command (1=Open, 2=Close, Area: 0)
+    const val PROP_TAILGATE_STATUS = 0x31400314   // Int: Tailgate Position Status (1=Open, 0=Closed / 2=Closed, Area: 0, alias vc_alias_door_trunk_pos)
+    const val PROP_TAILGATE = 0x31400314          // Backwards-compatible alias for tailgate status
+    const val PROP_DOOR_LOCK = 0x314003eb         // Int: 1=Locked, 2=Unlocked (Area: 0)
 
     // Lighting & Air Quality
     const val PROP_AMBIENT_LIGHT = 0x3140039a      // Int: Color & Mode (1..6, Area: 0)
@@ -139,49 +173,46 @@ object DeepalS05Property {
     const val SPEECH_TRANSACT_PLAY_TTS = 0x1b      // 27: In-cabin TTS playback
     const val SPEECH_TRANSACT_PLAY_OUTSIDE_TTS = 0x62 // 98: Outside vehicle TTS speaker broadcast
     const val SPEECH_TRANSACT_CLEAR_OUTSIDE_TTS = 0x60 // 96: Clear / stop outside speaker speech
-    const val SPEECH_SETTING_OUTSIDE_SPEAKER = "tinnove_voice_outofcar"
+    const val SPEECH_SETTING_OUTSIDE_SPEAKER = "tinnove_voice_outofcar" // Global Settings key (1=enabled, 0=disabled)
 
-    // Vehicle Settings Service Constants
-    const val VEHICLE_SETTINGS_SERVICE = "wt.vehiclesetting"
-    const val VEHICLE_SETTINGS_DESCRIPTOR = "com.openos.settings.vehiclesettings.IVehicleSettingInterface"
-
-    // Changan InCall OEM Navigation / AR-HUD Interconnect
+    // InCall Multi-Screen & HUD Interactive Manager Identifiers
     const val INCALL_SVR_MNG_SERVICE = "com.incall.SVR_MNG_SERVICE"
     const val INCALL_DOUBLE_INTERACTIVE_SERVICE = "com.incall.double.INTERACTIVE_SERVICE"
-    const val INCALL_DESCRIPTOR_SVR_MANAGER = "com.incall.serversdk.server.ISvrManager"
+    const val INCALL_DESCRIPTOR = "com.incall.serversdk.interactive.IDouInteractiveManager"
+    const val INCALL_DESCRIPTOR_SVR_MANAGER = "com.incall.serversdk.servermanager.IServerManager"
     const val INCALL_DESCRIPTOR_INTERACTIVE_MANAGER = "com.incall.serversdk.interactive.IDouInteractiveManager"
+    const val INCALL_TRANSACT_CODE = 1
 
-    // InCall Transaction Codes (com.incall.serversdk.interactive.IDouInteractiveManager)
-    const val INCALL_CMD_SWITCH_LVDS_FINISH = 0x01   // sendSwitchLVDSFinishEvent(int state)
-    const val INCALL_CMD_CONTRA_NAVIGATE_EVENT = 0x02// sendContraNavigateEvent(int event)
-    const val INCALL_CMD_GET_LOG_EVENT = 0x03        // sendGetLogEvent()
-    const val INCALL_CMD_360_TRIG_EVENT = 0x04       // send360trigEvent(int event)
-    const val INCALL_CMD_CUSTOM_KEY_EVENT = 0x05     // sendCustomKeyEvent(int keyCode, int keyAction)
-    const val INCALL_CMD_SEND_LOCATION_INFO = 0x0d   // sendLocationInfo(String json)
-    const val INCALL_CMD_SEND_WEATHER_TIME_INFO = 0x0e // sendWeatherAndTimeInfo(String json)
-    const val INCALL_CMD_NAVIGATE_STATUS = 0x16      // sendNavigateStatus(int status: 1=Navigating, 2=Arrived, 0=Cleared)
-    const val INCALL_CMD_NAVIGATE_CROSS_ROAD = 0x17  // sendNavigateCrossRoad(int crossRoad)
-    const val INCALL_CMD_NAVIGATE_TURN_INFO = 0x18   // sendNavigateTurnInfo(int turnIcon, int turnDistMeters)
-    const val INCALL_CMD_NAVIGATE_LANE_INFO = 0x19   // sendNavigateLaneInfo(String laneInfo)
-    const val INCALL_CMD_NAVIGATE_ROAD_INFO = 0x1a   // sendNavigateRoadInfo(String nextRoad, String curRoad)
-    const val INCALL_CMD_NAVIGATE_REMAIN_INFO = 0x1b // sendNavigateRemainInfo(int remainDistMeters, int remainTimeSec)
-    const val INCALL_CMD_NAVIGATE_CAMERA_INFO = 0x1c // sendNavigateCameraInfo(String cameraInfo)
-    const val INCALL_CMD_REGISTER_NAVIGATE_CALLBACK = 0x1d // registerNavigateCallback(INavigateCallback)
-    const val INCALL_CMD_UNREGISTER_NAVIGATE_CALLBACK = 0x1e // unRegisterNavigateCallback(INavigateCallback)
-    const val INCALL_CMD_SEND_AI_SMART_STATUS = 0x1f // sendAISmartStatus(int status)
-    const val INCALL_CMD_SEND_AI_SMART_RESULT = 0x20 // sendAISmartResult(String result)
-    const val INCALL_CMD_SEND_VOICE_STATUS = 0x23    // sendVoiceStatus(String status)
-    const val INCALL_CMD_SEND_VOICE_RESULT = 0x24    // sendVoiceResult(String result)
-    const val INCALL_CMD_SEND_MEDIA_SOURCE = 0x25    // sendMediaSource(String source)
-    const val INCALL_CMD_SEND_MEDIA_PLAY_TIME = 0x26 // sendMediaPlayTime(int curTime, int totalTime, int state)
-    const val INCALL_CMD_SEND_MEDIA_ALBUM = 0x27     // sendMediaAlbum(int type, String title, String artist)
-    const val INCALL_CMD_REGISTER_MEDIA_CALLBACK = 0x28 // registerMediaCallback(IMediaCallback)
-    const val INCALL_CMD_UNREGISTER_MEDIA_CALLBACK = 0x29 // unRegisterMediaCallback(IMediaCallback)
-    const val INCALL_CMD_SEND_CALL_INFO = 0x2a       // sendCallInfo(String callInfo)
-    const val INCALL_CMD_SEND_CALL_TIME = 0x2b       // sendCallTime(int seconds)
-    const val INCALL_CMD_SEND_CALL_HEAD = 0x2c       // sendCallHead(String avatarUrl)
-    const val INCALL_CMD_NAVIGATE_BACK_STATUS = 0x31 // sendNavigateBackStatus(int status)
-    const val INCALL_CMD_NAVIGATE_PERCENT = 0x32     // sendNavigatePercent(int percent)
-    const val INCALL_CMD_REQUEST_NAVI_FOCUS = 0x3f   // requestNaviFocus(String pkg, INaviFocusCallback)
-    const val INCALL_CMD_ABANDON_NAVI_FOCUS = 0x40   // abandonNaviFocus(String pkg, INaviFocusCallback)
+    // InCall Function Codes (mCode in transact IPC)
+    const val INCALL_CMD_LOCATION_INFO = 0x04          // 4: Vehicle GPS location string
+    const val INCALL_CMD_WEATHER_TIME_INFO = 0x0e      // 14: Weather & time metadata string
+    const val INCALL_CMD_NAVIGATE_STATUS = 0x16        // 22: Navigation state (1=Active guidance, 2=Arrived, 0=Idle)
+    const val INCALL_CMD_CROSS_ROAD = 0x17             // 23: Cross road junction view status
+    const val INCALL_CMD_NAVIGATE_CROSS_ROAD = 0x17
+    const val INCALL_CMD_TURN_INFO = 0x18              // 24: Turn maneuver icon ID & countdown distance (meters)
+    const val INCALL_CMD_NAVIGATE_TURN_INFO = 0x18
+    const val INCALL_CMD_LANE_INFO = 0x19              // 25: Recommended lane guidance string
+    const val INCALL_CMD_NAVIGATE_LANE_INFO = 0x19
+    const val INCALL_CMD_ROAD_INFO = 0x1a              // 26: Next road name & Current road name strings
+    const val INCALL_CMD_NAVIGATE_ROAD_INFO = 0x1a
+    const val INCALL_CMD_REMAIN_INFO = 0x1b            // 27: Remaining trip distance (m) & ETA (seconds)
+    const val INCALL_CMD_NAVIGATE_REMAIN_INFO = 0x1b
+    const val INCALL_CMD_CAMERA_INFO = 0x1c            // 28: Speed camera & radar alerts string
+    const val INCALL_CMD_NAVIGATE_CAMERA_INFO = 0x1c
+    const val INCALL_CMD_AI_SMART_STATUS = 0x1f        // 31: AI driving status
+    const val INCALL_CMD_AI_SMART_SCENE = 0x20         // 32: AI smart driving scene
+    const val INCALL_CMD_VR_STATUS = 0x23              // 35: Voice recognition state
+    const val INCALL_CMD_VR_RESULT = 0x24              // 36: Voice recognition parsed result string
+    const val INCALL_CMD_MEDIA_SOURCE = 0x25           // 37: Media playback source
+    const val INCALL_CMD_MEDIA_TIME = 0x26             // 38: Media track duration & elapsed time
+    const val INCALL_CMD_MEDIA_ALBUM_ICON = 0x27       // 39: Media cover album icon
+    const val INCALL_CMD_CALL_INFO = 0x2a              // 42: Incoming/outgoing phone call metadata
+    const val INCALL_CMD_CALL_TIME = 0x2b              // 43: Call duration timer
+    const val INCALL_CMD_CALL_AVATAR = 0x2c            // 44: Contact caller avatar icon
+    const val INCALL_CMD_BACK_STATUS = 0x31            // 49: Background status
+    const val INCALL_CMD_PERCENT = 0x32                // 50: Progress percentage
+    const val INCALL_CMD_REQUEST_FOCUS = 0x3f          // 63: Request HUD graphics focus with callback
+    const val INCALL_CMD_REQUEST_NAVI_FOCUS = 0x3f
+    const val INCALL_CMD_ABANDON_FOCUS = 0x40          // 64: Release HUD graphics focus with callback
+    const val INCALL_CMD_ABANDON_NAVI_FOCUS = 0x40
 }

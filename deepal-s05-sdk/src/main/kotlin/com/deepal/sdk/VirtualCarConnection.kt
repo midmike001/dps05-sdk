@@ -9,11 +9,12 @@ import kotlinx.coroutines.withContext
 import java.lang.reflect.Method
 
 /**
- * Low-level Binder IPC Connection Bridge to Changan OpenOS VirtualCar services.
+ * Low-level Binder IPC Connection Bridge to Changan OpenOS VirtualCar & VehicleSetting services.
  *
  * Implements direct transact calls to:
  * - `com.openos.virtualcar.IVirtualCar` (registered as "virtualcar_service")
  * - `com.openos.virtualcar.IVirturalCarProperty` (retrieved via transact code 2 "virtualcar_property_service")
+ * - `com.openos.settings.vehiclesettings.IVehicleSettingInterface` (registered as "wt.vehiclesetting")
  */
 class VirtualCarConnection {
     companion object {
@@ -28,6 +29,9 @@ class VirtualCarConnection {
 
     @Volatile
     private var propertyServiceBinder: IBinder? = null
+
+    @Volatile
+    private var vehicleSettingBinder: IBinder? = null
 
     /**
      * Resolves the root virtualcar_service Binder via ServiceManager reflection.
@@ -102,6 +106,28 @@ class VirtualCarConnection {
     }
 
     /**
+     * Resolves the wt.vehiclesetting Binder for Sunshade, Sunroof, and Chassis preferences.
+     */
+    fun getVehicleSettingService(): IBinder? {
+        val existing = vehicleSettingBinder
+        if (existing != null && existing.isBinderAlive) {
+            return existing
+        }
+        return try {
+            val smClass = Class.forName("android.os.ServiceManager")
+            val getMethod = smClass.getMethod("getService", String::class.java)
+            val binder = getMethod.invoke(null, DeepalS05Property.VEHICLE_SETTING_SERVICE) as? IBinder
+            if (binder != null && binder.isBinderAlive) {
+                vehicleSettingBinder = binder
+                binder
+            } else null
+        } catch (e: Throwable) {
+            Log.w(TAG, "wt.vehiclesetting resolution failed: ${e.message}")
+            null
+        }
+    }
+
+    /**
      * Reads a car property value object by propId and areaId.
      */
     fun getVirtualCarValue(propId: Int, areaId: Int = DeepalS05Property.AREA_GLOBAL): VirtualCarValue? {
@@ -110,7 +136,7 @@ class VirtualCarConnection {
         val data = Parcel.obtain()
         val reply = Parcel.obtain()
         return try {
-            data.writeInterfaceToken(DeepalS05Property.DESCRIPTOR_PROPERTY)
+            data.writeInterfaceToken(DeepalS05Property.DESCRIPTOR_VIRTUAL_CAR_PROPERTY)
             data.writeInt(propId)
             data.writeInt(areaId)
 
@@ -174,7 +200,7 @@ class VirtualCarConnection {
         val data = Parcel.obtain()
         val reply = Parcel.obtain()
         try {
-            data.writeInterfaceToken(DeepalS05Property.DESCRIPTOR_PROPERTY)
+            data.writeInterfaceToken(DeepalS05Property.DESCRIPTOR_VIRTUAL_CAR_PROPERTY)
             data.writeInt(1) // Has value flag
             value.writeToParcel(data, 0)
 
@@ -199,7 +225,6 @@ class VirtualCarConnection {
     suspend fun setProperty(
         propId: Int,
         areaId: Int = DeepalS05Property.AREA_GLOBAL,
-        className: String,
         value: Any
     ): Boolean = withContext(Dispatchers.IO) {
         val carValue = VirtualCarValue(
@@ -211,5 +236,292 @@ class VirtualCarConnection {
             mValue = value
         )
         setVirtualCarValue(carValue)
+    }
+
+    /**
+     * Sets the electric sunroof shade position (0..100 percent) via wt.vehiclesetting service.
+     * 100 = Fully Open, 0 = Fully Closed.
+     */
+    suspend fun setSunshadePos(posPercent: Int): Boolean = withContext(Dispatchers.IO) {
+        val binder = getVehicleSettingService() ?: return@withContext false
+        val data = Parcel.obtain()
+        val reply = Parcel.obtain()
+        try {
+            data.writeInterfaceToken(DeepalS05Property.DESCRIPTOR_VEHICLE_SETTING)
+            data.writeInt(posPercent.coerceIn(0, 100))
+            val ok = binder.transact(DeepalS05Property.TRANSACT_SET_SUNSHADE_POS, data, reply, 0)
+            if (ok) {
+                reply.readException()
+                true
+            } else false
+        } catch (e: Throwable) {
+            Log.e(TAG, "setSunshadePos($posPercent) failed: ${e.message}")
+            false
+        } finally {
+            data.recycle()
+            reply.recycle()
+        }
+    }
+
+    /**
+     * Reads current sunroof sunshade position (0..100 percent) from wt.vehiclesetting service.
+     */
+    suspend fun getSunshadePos(): Int? = withContext(Dispatchers.IO) {
+        val binder = getVehicleSettingService() ?: return@withContext null
+        val data = Parcel.obtain()
+        val reply = Parcel.obtain()
+        try {
+            data.writeInterfaceToken(DeepalS05Property.DESCRIPTOR_VEHICLE_SETTING)
+            val ok = binder.transact(DeepalS05Property.TRANSACT_GET_SUNSHADE_POS, data, reply, 0)
+            if (ok) {
+                reply.readException()
+                reply.readInt()
+            } else null
+        } catch (e: Throwable) {
+            Log.w(TAG, "getSunshadePos failed: ${e.message}")
+            null
+        } finally {
+            data.recycle()
+            reply.recycle()
+        }
+    }
+
+    /**
+     * Sets the sunroof glass position (0..100 percent) via wt.vehiclesetting service.
+     */
+    suspend fun setSunroofPos(posPercent: Int): Boolean = withContext(Dispatchers.IO) {
+        val binder = getVehicleSettingService() ?: return@withContext false
+        val data = Parcel.obtain()
+        val reply = Parcel.obtain()
+        try {
+            data.writeInterfaceToken(DeepalS05Property.DESCRIPTOR_VEHICLE_SETTING)
+            data.writeInt(posPercent.coerceIn(0, 100))
+            val ok = binder.transact(DeepalS05Property.TRANSACT_SET_SUNROOF_POS, data, reply, 0)
+            if (ok) {
+                reply.readException()
+                true
+            } else false
+        } catch (e: Throwable) {
+            Log.e(TAG, "setSunroofPos($posPercent) failed: ${e.message}")
+            false
+        } finally {
+            data.recycle()
+            reply.recycle()
+        }
+    }
+
+    /**
+     * Reads current sunroof glass position (0..100 percent) from wt.vehiclesetting service.
+     */
+    suspend fun getSunroofPos(): Int? = withContext(Dispatchers.IO) {
+        val binder = getVehicleSettingService() ?: return@withContext null
+        val data = Parcel.obtain()
+        val reply = Parcel.obtain()
+        try {
+            data.writeInterfaceToken(DeepalS05Property.DESCRIPTOR_VEHICLE_SETTING)
+            val ok = binder.transact(DeepalS05Property.TRANSACT_GET_SUNROOF_POS, data, reply, 0)
+            if (ok) {
+                reply.readException()
+                reply.readInt()
+            } else null
+        } catch (e: Throwable) {
+            Log.w(TAG, "getSunroofPos failed: ${e.message}")
+            null
+        } finally {
+            data.recycle()
+            reply.recycle()
+        }
+    }
+
+    /**
+     * Sets sunroof tilt state (1=Tilt Up / Vent, 0=Closed) via wt.vehiclesetting service.
+     */
+    suspend fun setSunroofTiltStatus(tilt: Int): Boolean = withContext(Dispatchers.IO) {
+        val binder = getVehicleSettingService() ?: return@withContext false
+        val data = Parcel.obtain()
+        val reply = Parcel.obtain()
+        try {
+            data.writeInterfaceToken(DeepalS05Property.DESCRIPTOR_VEHICLE_SETTING)
+            data.writeInt(tilt)
+            val ok = binder.transact(DeepalS05Property.TRANSACT_SET_SUNROOF_TILT, data, reply, 0)
+            if (ok) {
+                reply.readException()
+                true
+            } else false
+        } catch (e: Throwable) {
+            Log.e(TAG, "setSunroofTiltStatus($tilt) failed: ${e.message}")
+            false
+        } finally {
+            data.recycle()
+            reply.recycle()
+        }
+    }
+
+    /**
+     * Sets mirror auto-fold on lock preference switch via wt.vehiclesetting service.
+     */
+    suspend fun setMirrorAutofoldSw(enabled: Boolean): Boolean = withContext(Dispatchers.IO) {
+        val binder = getVehicleSettingService() ?: return@withContext false
+        val data = Parcel.obtain()
+        val reply = Parcel.obtain()
+        try {
+            data.writeInterfaceToken(DeepalS05Property.DESCRIPTOR_VEHICLE_SETTING)
+            data.writeInt(if (enabled) 1 else 0)
+            val ok = binder.transact(DeepalS05Property.TRANSACT_SET_MIRROR_AUTOFOLD, data, reply, 0)
+            if (ok) {
+                reply.readException()
+                true
+            } else false
+        } catch (e: Throwable) {
+            Log.e(TAG, "setMirrorAutofoldSw failed: ${e.message}")
+            false
+        } finally {
+            data.recycle()
+            reply.recycle()
+        }
+    }
+
+    /**
+     * Sets walk-away smart auto-locking switch via wt.vehiclesetting service.
+     */
+    suspend fun setSmartLeavingLockSw(enabled: Boolean): Boolean = withContext(Dispatchers.IO) {
+        val binder = getVehicleSettingService() ?: return@withContext false
+        val data = Parcel.obtain()
+        val reply = Parcel.obtain()
+        try {
+            data.writeInterfaceToken(DeepalS05Property.DESCRIPTOR_VEHICLE_SETTING)
+            data.writeInt(if (enabled) 1 else 0)
+            val ok = binder.transact(DeepalS05Property.TRANSACT_SET_SMART_LEAVING_LOCK, data, reply, 0)
+            if (ok) {
+                reply.readException()
+                true
+            } else false
+        } catch (e: Throwable) {
+            Log.e(TAG, "setSmartLeavingLockSw failed: ${e.message}")
+            false
+        } finally {
+            data.recycle()
+            reply.recycle()
+        }
+    }
+
+    /**
+     * Sets HUD hardware on/off switch status via wt.vehiclesetting service.
+     */
+    suspend fun setHudSwitchStatus(enabled: Boolean): Boolean = withContext(Dispatchers.IO) {
+        val binder = getVehicleSettingService() ?: return@withContext false
+        val data = Parcel.obtain()
+        val reply = Parcel.obtain()
+        try {
+            data.writeInterfaceToken(DeepalS05Property.DESCRIPTOR_VEHICLE_SETTING)
+            data.writeInt(if (enabled) 1 else 0)
+            val ok = binder.transact(DeepalS05Property.TRANSACT_SET_HUD_SWITCH, data, reply, 0)
+            if (ok) {
+                reply.readException()
+                true
+            } else false
+        } catch (e: Throwable) {
+            Log.e(TAG, "setHudSwitchStatus failed: ${e.message}")
+            false
+        } finally {
+            data.recycle()
+            reply.recycle()
+        }
+    }
+
+    /**
+     * Sets HUD optical brightness level via wt.vehiclesetting service.
+     */
+    suspend fun setHudBright(brightness: Int): Boolean = withContext(Dispatchers.IO) {
+        val binder = getVehicleSettingService() ?: return@withContext false
+        val data = Parcel.obtain()
+        val reply = Parcel.obtain()
+        try {
+            data.writeInterfaceToken(DeepalS05Property.DESCRIPTOR_VEHICLE_SETTING)
+            data.writeInt(brightness)
+            val ok = binder.transact(DeepalS05Property.TRANSACT_SET_HUD_BRIGHT, data, reply, 0)
+            if (ok) {
+                reply.readException()
+                true
+            } else false
+        } catch (e: Throwable) {
+            Log.e(TAG, "setHudBright failed: ${e.message}")
+            false
+        } finally {
+            data.recycle()
+            reply.recycle()
+        }
+    }
+
+    /**
+     * Sets HUD optical height level via wt.vehiclesetting service.
+     */
+    suspend fun setHudHeight(height: Int): Boolean = withContext(Dispatchers.IO) {
+        val binder = getVehicleSettingService() ?: return@withContext false
+        val data = Parcel.obtain()
+        val reply = Parcel.obtain()
+        try {
+            data.writeInterfaceToken(DeepalS05Property.DESCRIPTOR_VEHICLE_SETTING)
+            data.writeInt(height)
+            val ok = binder.transact(DeepalS05Property.TRANSACT_SET_HUD_HEIGHT, data, reply, 0)
+            if (ok) {
+                reply.readException()
+                true
+            } else false
+        } catch (e: Throwable) {
+            Log.e(TAG, "setHudHeight failed: ${e.message}")
+            false
+        } finally {
+            data.recycle()
+            reply.recycle()
+        }
+    }
+
+    /**
+     * Sets HUD navigation guidance display switch via wt.vehiclesetting service.
+     */
+    suspend fun setHudDisplayNavSw(enabled: Boolean): Boolean = withContext(Dispatchers.IO) {
+        val binder = getVehicleSettingService() ?: return@withContext false
+        val data = Parcel.obtain()
+        val reply = Parcel.obtain()
+        try {
+            data.writeInterfaceToken(DeepalS05Property.DESCRIPTOR_VEHICLE_SETTING)
+            data.writeInt(if (enabled) 1 else 0)
+            val ok = binder.transact(DeepalS05Property.TRANSACT_SET_HUD_DISPLAY_NAV, data, reply, 0)
+            if (ok) {
+                reply.readException()
+                true
+            } else false
+        } catch (e: Throwable) {
+            Log.e(TAG, "setHudDisplayNavSw failed: ${e.message}")
+            false
+        } finally {
+            data.recycle()
+            reply.recycle()
+        }
+    }
+
+    /**
+     * Sets HUD incoming phone call alert switch via wt.vehiclesetting service.
+     */
+    suspend fun setHudDisplayPhoneSw(enabled: Boolean): Boolean = withContext(Dispatchers.IO) {
+        val binder = getVehicleSettingService() ?: return@withContext false
+        val data = Parcel.obtain()
+        val reply = Parcel.obtain()
+        try {
+            data.writeInterfaceToken(DeepalS05Property.DESCRIPTOR_VEHICLE_SETTING)
+            data.writeInt(if (enabled) 1 else 0)
+            val ok = binder.transact(DeepalS05Property.TRANSACT_SET_HUD_DISPLAY_PHONE, data, reply, 0)
+            if (ok) {
+                reply.readException()
+                true
+            } else false
+        } catch (e: Throwable) {
+            Log.e(TAG, "setHudDisplayPhoneSw failed: ${e.message}")
+            false
+        } finally {
+            data.recycle()
+            reply.recycle()
+        }
     }
 }

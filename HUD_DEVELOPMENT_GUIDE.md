@@ -105,5 +105,20 @@ suspend fun updateGuidance() {
 
     // 6. Send camera alerts (Transact 0x1c)
     hud.sendNavigateCameraInfo("Speed Camera Ahead 60 km/h")
+
+    // 7. Send route progress percentage (Transact 0x32)
+    hud.sendNavigatePercent(45) // 45% of route completed
+
+    // 8. Send media metadata to HUD banner (Transacts 0x25, 0x26, 0x27)
+    hud.sendMediaSource("Spotify")
+    hud.sendMediaAlbum(sourceType = 1, title = "Blinding Lights", artist = "The Weeknd")
+    hud.sendMediaPlayTime(currentSec = 120, totalSec = 200, playStatus = 1)
+
+    // 9. Send active incoming phone call notification to HUD (Transact 0x2a, 0x2c)
+    hud.sendCallInfo("John Doe (+1 555-0199)")
+    hud.sendCallTime(callDurationSec = 45)
+
+    // 10. Send weather info (Transact 0x0e)
+    hud.sendWeatherInfo("{\"temp\": 28, \"condition\": \"Sunny\", \"pm25\": 15}")
 }
 ```

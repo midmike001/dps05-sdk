@@ -39,6 +39,7 @@ data class DeepalS05Telemetry(
     val climateTempC: Float = 24.0f,
     val passengerTempC: Float = 24.0f,
     val fanSpeed: Int = 1,
+    val windDirection: Int = DeepalS05Property.WIND_DIRECTION_FACE, // 8=Defrost, 9=Face, 10=Feet, 11=Dual
     val isRecirculationOn: Boolean = false,
     val isFrontDefrostOn: Boolean = false,
     val isRearDefrostOn: Boolean = false,
@@ -55,6 +56,8 @@ data class DeepalS05Telemetry(
 
     // Doors, Windows & Body Access
     val isDoorLocked: Boolean = true,
+    val doorHandlesExpanded: Boolean = false,
+    val mirrorsFolded: Boolean = false,
     val doorFlOpen: Boolean = false,
     val doorFrOpen: Boolean = false,
     val doorRlOpen: Boolean = false,

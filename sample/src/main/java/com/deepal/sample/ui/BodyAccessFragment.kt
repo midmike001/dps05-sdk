@@ -35,6 +35,7 @@ class BodyAccessFragment : Fragment() {
         // Windows
         binding.btnWindowsOpenAll.setOnClickListener { viewModel.operateWindows(1) }
         binding.btnWindowsCloseAll.setOnClickListener { viewModel.operateWindows(2) }
+        binding.btnWindowsVent.setOnClickListener { viewModel.operateWindows(3) }
         binding.btnWindowsStop.setOnClickListener { viewModel.operateWindows(0) }
 
         // Sunroof Shade
@@ -45,6 +46,12 @@ class BodyAccessFragment : Fragment() {
         // Tailgate & Locks
         binding.btnToggleTailgate.setOnClickListener { viewModel.toggleTailgate() }
         binding.btnToggleLocks.setOnClickListener { viewModel.toggleDoorLocks() }
+
+        // Motorized Actuators (Handles, Mirrors, Fuel Cap, Glove Box)
+        binding.btnToggleDoorHandles.setOnClickListener { viewModel.toggleDoorHandles() }
+        binding.btnToggleMirrorFold.setOnClickListener { viewModel.toggleMirrorFold() }
+        binding.btnOpenFuelCap.setOnClickListener { viewModel.openFuelCap() }
+        binding.btnOpenGloveBox.setOnClickListener { viewModel.openGloveBox() }
 
         // Ambience & Purifier
         binding.btnAmbientCyan.setOnClickListener { viewModel.setAmbientPreset(1, 80) }
@@ -69,6 +76,12 @@ class BodyAccessFragment : Fragment() {
 
                     binding.btnToggleLocks.text = "Doors: " + if (t.isDoorLocked) "LOCKED" else "UNLOCKED"
                     binding.btnToggleLocks.setTextColor(if (t.isDoorLocked) Color.parseColor("#00E676") else Color.parseColor("#FF5252"))
+
+                    binding.btnToggleDoorHandles.text = "Handles: " + if (t.doorHandlesExpanded) "EXPANDED" else "RETRACTED"
+                    binding.btnToggleDoorHandles.setTextColor(if (t.doorHandlesExpanded) Color.parseColor("#00E676") else Color.parseColor("#94A3B8"))
+
+                    binding.btnToggleMirrorFold.text = "Mirrors: " + if (t.mirrorsFolded) "FOLDED" else "UNFOLDED"
+                    binding.btnToggleMirrorFold.setTextColor(if (t.mirrorsFolded) Color.parseColor("#FFB300") else Color.parseColor("#00E5FF"))
 
                     binding.btnAirPurifier.text = "Purifier: " + if (t.isAirPurifierOn) "ON" else "OFF"
                     binding.btnAirPurifier.setTextColor(if (t.isAirPurifierOn) Color.parseColor("#00E676") else Color.parseColor("#94A3B8"))
