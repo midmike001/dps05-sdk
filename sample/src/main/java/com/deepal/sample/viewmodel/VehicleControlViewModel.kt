@@ -46,13 +46,28 @@ class VehicleControlViewModel : ViewModel() {
                     gear = "D",
                     batterySocPercent = 78,
                     remainingRangeKm = 345,
+                    evRemainingRangeKm = 345,
                     odometerKm = 12450.5f,
                     exteriorTempC = 28.5f,
+                    cabinInternalTempC = 23.5f,
                     climateTempC = 22.0f,
                     passengerTempC = 23.0f,
                     fanSpeed = 3,
                     isAcOn = true,
-                    isClimatePowerOn = true
+                    isClimatePowerOn = true,
+                    tirePressureFlBar = 2.4f,
+                    tirePressureFrBar = 2.4f,
+                    tirePressureRlBar = 2.5f,
+                    tirePressureRrBar = 2.5f,
+                    tripElecAvgKwhPer100Km = 13.8f,
+                    tripOilAvgLPer100Km = 0f,
+                    tripElecDistanceKm = 42.5f,
+                    tripElecTimeMinutes = 58,
+                    doorFlOpen = false,
+                    doorFrOpen = false,
+                    doorRlOpen = false,
+                    doorRrOpen = false,
+                    isTailgateOpen = false
                 )
             }
             startSimulationLoop()
@@ -213,7 +228,7 @@ class VehicleControlViewModel : ViewModel() {
         val next = !telemetry.value.isTailgateOpen
         viewModelScope.launch {
             client.setTailgate(next)
-            logAction("Tailgate set to ${if (next) "OPEN" else "CLOSED"}")
+            logAction("Tailgate set to ${if (next) "OPEN" else "CLOSED"} (PROP_TAILGATE = 0x31400314)")
         }
     }
 
@@ -248,6 +263,21 @@ class VehicleControlViewModel : ViewModel() {
             client.setAirPurifier(next)
             logAction("PM2.5 Air Purifier set to $next")
         }
+    }
+
+    // --- Audio, Outside Speaker & Speech TTS ---
+    fun toggleOutsideMusic() {
+        val next = !telemetry.value.isOutsideMusicPlaying
+        client.updateTelemetry { it.copy(isOutsideMusicPlaying = next) }
+        logAction("Outside Speaker Music Event (0x66) set to ${if (next) "PLAYING" else "STOPPED"}")
+    }
+
+    fun playInsideTts(text: String) {
+        logAction("In-Cabin TTS (VrLogicService Transact 0x1b): '$text'")
+    }
+
+    fun playOutsideTts(text: String) {
+        logAction("Outside Speaker TTS (VrLogicService Transact 0x62): '$text'")
     }
 
     // --- Scenes & Automations ---

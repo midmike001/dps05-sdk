@@ -1,13 +1,18 @@
 package com.deepal.sample.ui
 
+import android.graphics.Color
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.deepal.sample.databinding.FragmentScenesVoiceBinding
 import com.deepal.sample.viewmodel.VehicleControlViewModel
+import kotlinx.coroutines.launch
 
 class ScenesVoiceFragment : Fragment() {
 
@@ -44,6 +49,15 @@ class ScenesVoiceFragment : Fragment() {
             viewModel.triggerScene("CAMP")
         }
 
+        // Outside Speaker & TTS
+        binding.btnOutsideMusic.setOnClickListener {
+            viewModel.toggleOutsideMusic()
+        }
+
+        binding.btnOutsideTts.setOnClickListener {
+            viewModel.playOutsideTts("Attention: Deepal S05 vehicle reversing, please watch out.")
+        }
+
         // Rain Guardian
         binding.btnExecuteRainGuardian.setOnClickListener {
             viewModel.triggerRainGuardian()
@@ -68,6 +82,18 @@ class ScenesVoiceFragment : Fragment() {
         binding.btnVoiceLock.setOnClickListener {
             viewModel.logAction("Voice Wake: 'Hello Deepal, lock all doors'")
             viewModel.toggleDoorLocks()
+        }
+
+        // Observe Telemetry for outside speaker state
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.telemetry.collect { t ->
+                    binding.btnOutsideMusic.text = "Outside Music: " + if (t.isOutsideMusicPlaying) "PLAYING" else "STOPPED"
+                    binding.btnOutsideMusic.setTextColor(
+                        if (t.isOutsideMusicPlaying) Color.parseColor("#00E676") else Color.parseColor("#94A3B8")
+                    )
+                }
+            }
         }
     }
 

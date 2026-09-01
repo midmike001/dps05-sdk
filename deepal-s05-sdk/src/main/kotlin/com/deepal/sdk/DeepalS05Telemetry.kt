@@ -2,17 +2,37 @@ package com.deepal.sdk
 
 /**
  * Immutable vehicle telemetry data model representing the live state of Deepal S05.
+ *
+ * Ground truth properties and area masks verified against Changan OpenOS framework.
  */
 data class DeepalS05Telemetry(
+    // Powertrain & Dynamics
     val speedKmh: Float = 0f,
     val gear: String = "P",
     val batterySocPercent: Int = 0,
     val remainingRangeKm: Int = 0,
+    val evRemainingRangeKm: Int = 0,
     val odometerKm: Float = 0f,
     val exteriorTempC: Float = 25.0f,
+    val cabinInternalTempC: Float = 24.0f,
     val driveMode: String = "COMFORT",
+    val isPowerOn: Boolean = true,
 
-    // Climate
+    // Tire Pressure Telemetry (in Bar, property 0x37600211)
+    val tirePressureFlBar: Float = 2.4f,
+    val tirePressureFrBar: Float = 2.4f,
+    val tirePressureRlBar: Float = 2.4f,
+    val tirePressureRrBar: Float = 2.4f,
+
+    // Trip & REEV Energy Metrics
+    val tripElecAvgKwhPer100Km: Float = 0f,
+    val tripOilAvgLPer100Km: Float = 0f,
+    val tripElecDistanceKm: Float = 0f,
+    val tripElecTimeMinutes: Int = 0,
+    val tripFuelDistanceKm: Float = 0f,
+    val tripFuelTimeMinutes: Int = 0,
+
+    // Climate & HVAC
     val isClimatePowerOn: Boolean = false,
     val isAcOn: Boolean = true,
     val isAutoClimateOn: Boolean = true,
@@ -33,8 +53,12 @@ data class DeepalS05Telemetry(
     val seatMassageMode: Int = 1,
     val seatMassageLevel: Int = 1,
 
-    // Windows & Access
+    // Doors, Windows & Body Access
     val isDoorLocked: Boolean = true,
+    val doorFlOpen: Boolean = false,
+    val doorFrOpen: Boolean = false,
+    val doorRlOpen: Boolean = false,
+    val doorRrOpen: Boolean = false,
     val isTailgateOpen: Boolean = false,
     val isSunroofOpen: Boolean = false,
     val isWindowsOpen: Boolean = false,
@@ -43,11 +67,14 @@ data class DeepalS05Telemetry(
     val windowRlOpen: Boolean = false,
     val windowRrOpen: Boolean = false,
 
-    // Lighting & Environment
+    // Lighting & Cabin Environment
     val ambientLightColor: Int = 1,
     val ambientLightBrightness: Int = 60,
     val isAirPurifierOn: Boolean = false,
     val isAebOn: Boolean = true,
+
+    // Outside Audio & Speaker
+    val isOutsideMusicPlaying: Boolean = false,
 
     // Intelligent Automation Signals
     val isBatteryPreconditioning: Boolean = false,

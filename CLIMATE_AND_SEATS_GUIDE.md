@@ -5,23 +5,26 @@
 
 ## 1. System Architecture
 
-The Climate and Comfort domain in the **Changan Deepal S05** (C857 platform) controls dual-zone cabin temperature, airflow distribution, multi-stage seat heating/ventilation, and pneumatic massage programs through the OpenOS VirtualCar property bus.
+The Climate and Comfort domain in the **Changan Deepal S05** (Platform Model C857) controls dual-zone cabin temperature, airflow distribution, multi-stage seat heating/ventilation, and pneumatic massage programs through the OpenOS VirtualCar property bus and CarPropertyManager.
 
-### Key Property IDs & Area Masks (Ground Truth)
+### Key Property IDs & Area Masks (Ground Truth from `d+` Disassembly)
 
 | Property Constant | Hex ID | Area Mask | Data Type | Description |
 |:---|:---|:---|:---|:---|
 | `PROP_HVAC_TEMP_SET` | `0x35600105` | Area 1 (Driver), Area 4 (Passenger) | `Float` | Target cabin temperature (17.5°C .. 32.5°C in 0.5°C steps) |
+| `PROP_HVAC_INTERNAL_TEMP` | `0x38600112` | Area 1 (Driver) | `Float` | Cabin ambient internal thermometer (°C) |
 | `PROP_HVAC_POWER_ON` | `0x35400101` | Area 1 (Driver) & Area 0 (Global) | `Int` | Climate system power (1=On, 2=Off) |
 | `PROP_HVAC_AC_ON` | `0x35400102` | Area 1 (Driver) | `Int` | AC compressor state (1=On, 2=Off) |
 | `PROP_HVAC_AUTO` | `0x35400104` | Area 1 (Driver) & Area 0 (Global) | `Int` | Full automatic climate control (1=Auto, 2=Manual) |
+| `PROP_HVAC_FAN_DIRECTION` | `0x35400107` | Area 1 (Driver) | `Int` | Air vent direction / blow mode |
 | `PROP_HVAC_RECIRC` | `0x35400108` | Area 1 (Driver) | `Int` | Vendor Tri-State: `2`=Recirculation, `1`=Fresh Air |
 | `PROP_HVAC_FAN_SPEED` | `0x35400109` | Area 1 (Driver) | `Int` | Blower fan speed (1 to 8) |
 | `PROP_HVAC_MAX_AC` | `0x3540010b` | Area 1 (Driver) | `Int` | Maximum cooling mode (1=On, 2=Off) |
 | `PROP_HVAC_SYNC` | `0x3540010d` | Area 1 (Driver) | `Int` | Dual-zone sync mode (1=Sync, 2=Dual) |
-| `PROP_HVAC_DEFROST_FRONT` | `0x33400103` | Area 1 (Driver) | `Int` | Front windshield max defroster (1=On, 2=Off) |
+| `PROP_HVAC_DEFROST_FRONT` | `0x33400103` | Area 1 (Front Defrost), Area 2 (Rear Defrost) | `Int` | Front & Rear windshield defroster (1=On, 2=Off) |
 | `PROP_HVAC_DEFROST_REAR` | `0x3540010c` | Area 1 (Driver) | `Int` | Rear glass & heated side mirrors (1=On, 2=Off) |
-| `PROP_SEAT_HEATING` | `0x3540010f` | Area 1 (Driver), Area 4 (Passenger) | `Int` | Seat heating level (0 to 3) |
+| `PROP_SEAT_HEATING` | `0x3540010f` | Area 1 (Driver), Area 4 (Passenger) | `Int` | Seat heating level (0 to 3) via VirtualCar |
+| `PROP_SEAT_HEATING_CPM` | `0x1540050b` | Area 1 (Driver), Area 4 (Passenger) | `Int` | Seat heating level (0 to 3) via CarPropertyManager |
 | `PROP_SEAT_VENTILATION`| `0x35400111` | Area 1 (Driver), Area 4 (Passenger) | `Int` | Seat ventilation level (0 to 3) |
 | `PROP_SEAT_MASSAGE_TOGGLE` | `0x31400b2f` | Area 0 (Global), Area 4 (Passenger) | `Int` | Pneumatic massage toggle (1=On, 2=Off) |
 | `PROP_SEAT_MASSAGE_MODE` | `0x31400b31` | Area 0 (Global), Area 4 (Passenger) | `Int` | Pneumatic massage program (1 to 3) |
@@ -30,7 +33,7 @@ The Climate and Comfort domain in the **Changan Deepal S05** (C857 platform) con
 
 ---
 
-## 2. Temperature Conversion & Control
+## 2. Temperature Conversion & Dual-Zone Control
 
 The Deepal S05 HVAC system accepts temperature values between **17.5°C and 32.5°C** in **0.5°C increments**:
 
@@ -62,10 +65,10 @@ suspend fun configureBlowerAndDefrost() {
     // Set fan speed to level 4
     client.setFanSpeed(4)
 
-    // Activate Front Max Windshield Defrost (0x33400103)
+    // Activate Front Max Windshield Defrost (0x33400103, Area 1)
     client.setFrontDefrost(true)
 
-    // Activate Rear Window & Mirror Heating (0x3540010c)
+    // Activate Rear Window & Mirror Heating (0x3540010c / 0x33400103 Area 2)
     client.setRearDefrost(true)
 }
 ```

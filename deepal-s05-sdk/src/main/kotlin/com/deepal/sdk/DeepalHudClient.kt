@@ -9,7 +9,12 @@ import kotlinx.coroutines.withContext
 import java.lang.reflect.Method
 
 /**
- * Native Binder IPC Client to Changan InCall AR-HUD & Digital Instrument Cluster.
+ * Native Binder IPC Client to Changan InCall AR-HUD, Digital Instrument Cluster,
+ * and Multi-Screen Interconnect Services.
+ *
+ * Implements transaction protocols discovered from:
+ * - `com.incall.serversdk.server.ISvrManager` (Service: "com.incall.SVR_MNG_SERVICE")
+ * - `com.incall.serversdk.interactive.IDouInteractiveManager` (Service: "com.incall.double.INTERACTIVE_SERVICE")
  */
 class DeepalHudClient {
     companion object {
@@ -59,7 +64,7 @@ class DeepalHudClient {
      * Resolves the IDouInteractiveManager binder token.
      * Transaction 6 on ISvrManager with descriptor "com.incall.double.INTERACTIVE_SERVICE".
      */
-    private fun getInteractiveService(): IBinder? {
+    fun getInteractiveService(): IBinder? {
         if (interactiveServiceBinder != null && interactiveServiceBinder!!.isBinderAlive) {
             return interactiveServiceBinder
         }
@@ -180,6 +185,78 @@ class DeepalHudClient {
             }
         } catch (e: Throwable) {
             Log.e(TAG, "sendNavigateRemainInfo failed: ${e.message}")
+        } finally {
+            data.recycle()
+            reply.recycle()
+        }
+        false
+    }
+
+    /**
+     * Sends camera and speed limit warning info to HUD (Transact 0x1c / 28).
+     */
+    suspend fun sendNavigateCameraInfo(cameraInfo: String): Boolean = withContext(Dispatchers.IO) {
+        val binder = getInteractiveService() ?: return@withContext false
+        val data = Parcel.obtain()
+        val reply = Parcel.obtain()
+        try {
+            data.writeInterfaceToken(DeepalS05Property.INCALL_DESCRIPTOR_INTERACTIVE_MANAGER)
+            data.writeString(cameraInfo)
+            val ok = binder.transact(DeepalS05Property.INCALL_CMD_NAVIGATE_CAMERA_INFO, data, reply, 0)
+            if (ok) {
+                reply.readException()
+                return@withContext true
+            }
+        } catch (e: Throwable) {
+            Log.e(TAG, "sendNavigateCameraInfo failed: ${e.message}")
+        } finally {
+            data.recycle()
+            reply.recycle()
+        }
+        false
+    }
+
+    /**
+     * Sends lane guidance info to HUD (Transact 0x19 / 25).
+     */
+    suspend fun sendNavigateLaneInfo(laneInfo: String): Boolean = withContext(Dispatchers.IO) {
+        val binder = getInteractiveService() ?: return@withContext false
+        val data = Parcel.obtain()
+        val reply = Parcel.obtain()
+        try {
+            data.writeInterfaceToken(DeepalS05Property.INCALL_DESCRIPTOR_INTERACTIVE_MANAGER)
+            data.writeString(laneInfo)
+            val ok = binder.transact(DeepalS05Property.INCALL_CMD_NAVIGATE_LANE_INFO, data, reply, 0)
+            if (ok) {
+                reply.readException()
+                return@withContext true
+            }
+        } catch (e: Throwable) {
+            Log.e(TAG, "sendNavigateLaneInfo failed: ${e.message}")
+        } finally {
+            data.recycle()
+            reply.recycle()
+        }
+        false
+    }
+
+    /**
+     * Sends cross road junction view state to HUD (Transact 0x17 / 23).
+     */
+    suspend fun sendNavigateCrossRoad(crossRoadState: Int): Boolean = withContext(Dispatchers.IO) {
+        val binder = getInteractiveService() ?: return@withContext false
+        val data = Parcel.obtain()
+        val reply = Parcel.obtain()
+        try {
+            data.writeInterfaceToken(DeepalS05Property.INCALL_DESCRIPTOR_INTERACTIVE_MANAGER)
+            data.writeInt(crossRoadState)
+            val ok = binder.transact(DeepalS05Property.INCALL_CMD_NAVIGATE_CROSS_ROAD, data, reply, 0)
+            if (ok) {
+                reply.readException()
+                return@withContext true
+            }
+        } catch (e: Throwable) {
+            Log.e(TAG, "sendNavigateCrossRoad failed: ${e.message}")
         } finally {
             data.recycle()
             reply.recycle()

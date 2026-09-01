@@ -1,5 +1,8 @@
 package com.deepal.sdk
 
+import android.content.Context
+import android.os.IBinder
+import android.os.Parcel
 import android.util.Log
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,11 +17,14 @@ import kotlin.math.roundToInt
  * suspend methods for:
  * - Dual-Zone Automatic Climate Control & Defrost
  * - Seat Comfort (Ventilation, Heating, Massage presets)
- * - Power Windows, Electric Tailgate, Sunroof Sunshade & Locks
+ * - Power Windows, Electric Tailgate, Sunroof Sunshade & Door Locks
+ * - Individual 4-Door Open/Close Monitoring & Tire Pressure Monitoring (TPMS)
+ * - Trip & REEV Energy Consumption Telemetry
  * - 64-Color Ambient Lighting & PM2.5 Air Purifier
  * - Smart Automotive Scenes (Quick Defrost, Rapid Cool, Nap, Camp)
  * - Next-Gen EV Fast-Charging Battery Thermal Preconditioning
  * - Rain-Sensing Auto Guardian
+ * - Outside Speaker Audio & Speech TTS Broadcast
  */
 class DeepalS05Client(
     val connection: VirtualCarConnection = VirtualCarConnection(),
@@ -44,7 +50,7 @@ class DeepalS05Client(
 
     /**
      * Starts continuous real-time vehicle signal polling.
-     * Speed and critical metrics poll at 250ms; slow cabin metrics poll at 1000ms.
+     * Speed and critical metrics poll at 250ms; slow cabin & energy metrics poll at 1000ms.
      */
     fun startMonitoring() {
         if (pollingJob?.isActive == true) return
@@ -60,6 +66,9 @@ class DeepalS05Client(
                     if (isConnected) {
                         // High frequency signals (every 250ms)
                         val rawSpeed = connection.getFloatProperty(
+                            DeepalS05Property.PROP_VEHICLE_SPEED_VC,
+                            DeepalS05Property.AREA_GLOBAL
+                        ) ?: connection.getFloatProperty(
                             DeepalS05Property.PROP_VEHICLE_SPEED_VHAL,
                             DeepalS05Property.AREA_GLOBAL
                         )
@@ -87,9 +96,20 @@ class DeepalS05Client(
                             ) ?: _telemetry.value.batterySocPercent
 
                             val range = connection.getIntProperty(
+                                DeepalS05Property.PROP_REMAINING_RANGE_DISP_DTE,
+                                DeepalS05Property.AREA_GLOBAL
+                            ) ?: connection.getIntProperty(
+                                DeepalS05Property.PROP_REMAINING_RANGE_EV_DTE,
+                                DeepalS05Property.AREA_GLOBAL
+                            ) ?: connection.getIntProperty(
                                 DeepalS05Property.PROP_REMAINING_RANGE,
                                 DeepalS05Property.AREA_GLOBAL
                             ) ?: _telemetry.value.remainingRangeKm
+
+                            val evDte = connection.getIntProperty(
+                                DeepalS05Property.PROP_REMAINING_RANGE_EV_DTE,
+                                DeepalS05Property.AREA_GLOBAL
+                            ) ?: _telemetry.value.evRemainingRangeKm
 
                             val rawOdometer = connection.getFloatProperty(
                                 DeepalS05Property.PROP_ODOMETER,
@@ -103,6 +123,11 @@ class DeepalS05Client(
                                 DeepalS05Property.PROP_HVAC_TEMP_SET,
                                 DeepalS05Property.AREA_DRIVER
                             ) ?: _telemetry.value.climateTempC
+
+                            val cabinInsideTemp = connection.getFloatProperty(
+                                DeepalS05Property.PROP_HVAC_INTERNAL_TEMP,
+                                DeepalS05Property.AREA_DRIVER
+                            ) ?: _telemetry.value.cabinInternalTempC
 
                             val fan = connection.getIntProperty(
                                 DeepalS05Property.PROP_HVAC_FAN_SPEED,
@@ -121,16 +146,54 @@ class DeepalS05Client(
                             )
                             val rainState = rainRaw ?: _telemetry.value.rainSensorState
 
+                            // Doors telemetry
+                            val flOpen = connection.getIntProperty(DeepalS05Property.PROP_DOORS, DeepalS05Property.AREA_DOOR_FL) == 1
+                            val frOpen = connection.getIntProperty(DeepalS05Property.PROP_DOORS, DeepalS05Property.AREA_DOOR_FR) == 1
+                            val rlOpen = connection.getIntProperty(DeepalS05Property.PROP_DOORS, DeepalS05Property.AREA_DOOR_RL) == 1
+                            val rrOpen = connection.getIntProperty(DeepalS05Property.PROP_DOORS, DeepalS05Property.AREA_DOOR_RR) == 1
+                            val trunkOpen = connection.getIntProperty(DeepalS05Property.PROP_TAILGATE, DeepalS05Property.AREA_GLOBAL) == 1
+
+                            // Tire pressure telemetry (Bar)
+                            val tireFl = connection.getFloatProperty(DeepalS05Property.PROP_TIRE_PRESSURE, DeepalS05Property.AREA_TIRE_FL) ?: _telemetry.value.tirePressureFlBar
+                            val tireFr = connection.getFloatProperty(DeepalS05Property.PROP_TIRE_PRESSURE, DeepalS05Property.AREA_TIRE_FR) ?: _telemetry.value.tirePressureFrBar
+                            val tireRl = connection.getFloatProperty(DeepalS05Property.PROP_TIRE_PRESSURE, DeepalS05Property.AREA_TIRE_RL) ?: _telemetry.value.tirePressureRlBar
+                            val tireRr = connection.getFloatProperty(DeepalS05Property.PROP_TIRE_PRESSURE, DeepalS05Property.AREA_TIRE_RR) ?: _telemetry.value.tirePressureRrBar
+
+                            // Energy telemetry
+                            val elecAvg = connection.getFloatProperty(DeepalS05Property.PROP_THIS_TRIP_ELEC_AVG_CONSUMPTION, DeepalS05Property.AREA_GLOBAL) ?: _telemetry.value.tripElecAvgKwhPer100Km
+                            val oilAvg = connection.getFloatProperty(DeepalS05Property.PROP_THIS_TRIP_OIL_AVG_CONSUMPTION, DeepalS05Property.AREA_GLOBAL) ?: _telemetry.value.tripOilAvgLPer100Km
+                            val elecDist = connection.getFloatProperty(DeepalS05Property.PROP_THIS_TRIP_REEV_ELEC_DISTANCE, DeepalS05Property.AREA_GLOBAL) ?: _telemetry.value.tripElecDistanceKm
+                            val elecTime = connection.getIntProperty(DeepalS05Property.PROP_THIS_TRIP_REEV_ELEC_TIME, DeepalS05Property.AREA_GLOBAL) ?: _telemetry.value.tripElecTimeMinutes
+                            val fuelDist = connection.getFloatProperty(DeepalS05Property.PROP_THIS_TRIP_REEV_FUEL_DISTANCE, DeepalS05Property.AREA_GLOBAL) ?: _telemetry.value.tripFuelDistanceKm
+                            val fuelTime = connection.getIntProperty(DeepalS05Property.PROP_THIS_TRIP_REEV_FUEL_TIME, DeepalS05Property.AREA_GLOBAL) ?: _telemetry.value.tripFuelTimeMinutes
+
                             _telemetry.value = _telemetry.value.copy(
                                 speedKmh = speedKmh,
                                 gear = gearStr,
                                 batterySocPercent = soc,
                                 remainingRangeKm = range,
+                                evRemainingRangeKm = evDte,
                                 odometerKm = odoKm,
                                 climateTempC = temp,
+                                cabinInternalTempC = cabinInsideTemp,
                                 fanSpeed = fan,
                                 isBatteryPreconditioning = isPrecond,
                                 rainSensorState = rainState,
+                                doorFlOpen = flOpen,
+                                doorFrOpen = frOpen,
+                                doorRlOpen = rlOpen,
+                                doorRrOpen = rrOpen,
+                                isTailgateOpen = trunkOpen,
+                                tirePressureFlBar = tireFl,
+                                tirePressureFrBar = tireFr,
+                                tirePressureRlBar = tireRl,
+                                tirePressureRrBar = tireRr,
+                                tripElecAvgKwhPer100Km = elecAvg,
+                                tripOilAvgLPer100Km = oilAvg,
+                                tripElecDistanceKm = elecDist,
+                                tripElecTimeMinutes = elecTime,
+                                tripFuelDistanceKm = fuelDist,
+                                tripFuelTimeMinutes = fuelTime,
                                 isVirtualCarConnected = true
                             )
                         } else {
@@ -265,7 +328,7 @@ class DeepalS05Client(
         _telemetry.value = _telemetry.value.copy(isFrontDefrostOn = enabled)
         connection.setProperty(
             propId = DeepalS05Property.PROP_HVAC_DEFROST_FRONT,
-            areaId = DeepalS05Property.AREA_DRIVER,
+            areaId = DeepalS05Property.AREA_DEFROST_FRONT,
             className = "java.lang.Integer",
             value = if (enabled) 1 else 2
         )
@@ -273,12 +336,19 @@ class DeepalS05Client(
 
     suspend fun setRearDefrost(enabled: Boolean): Boolean = withContext(Dispatchers.IO) {
         _telemetry.value = _telemetry.value.copy(isRearDefrostOn = enabled)
-        connection.setProperty(
+        val a = connection.setProperty(
             propId = DeepalS05Property.PROP_HVAC_DEFROST_REAR,
             areaId = DeepalS05Property.AREA_DRIVER,
             className = "java.lang.Integer",
             value = if (enabled) 1 else 2
         )
+        val b = connection.setProperty(
+            propId = DeepalS05Property.PROP_HVAC_DEFROST_FRONT,
+            areaId = DeepalS05Property.AREA_DEFROST_REAR,
+            className = "java.lang.Integer",
+            value = if (enabled) 1 else 2
+        )
+        a || b
     }
 
     // ==========================================
@@ -292,12 +362,19 @@ class DeepalS05Client(
         } else {
             _telemetry.value.copy(passengerSeatHeat = clamped)
         }
-        connection.setProperty(
+        val vcOk = connection.setProperty(
             propId = DeepalS05Property.PROP_SEAT_HEATING,
             areaId = area,
             className = "java.lang.Integer",
             value = clamped
         )
+        val cpmOk = connection.setProperty(
+            propId = DeepalS05Property.PROP_SEAT_HEATING_CPM,
+            areaId = area,
+            className = "java.lang.Integer",
+            value = clamped
+        )
+        vcOk || cpmOk
     }
 
     suspend fun setSeatVentilation(level: Int, area: Int = DeepalS05Property.AREA_DRIVER): Boolean = withContext(Dispatchers.IO) {
