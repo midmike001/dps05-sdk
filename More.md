@@ -49,7 +49,7 @@ Registered in the Android system server under the service name `"virtualcar_serv
 ### 2. `IVirturalCarProperty` (Hardware Property Broker)
 *(Note: Uses the OEM spelling with 'r')*
 * **Reading Signals (Transact Code 3)**:
-  * `getValue(int propId, int areaId)`: Returns `VirtualCarValue` containing typed telemetry (e.g. Battery SoC %, Gear, Speed, Cabin Temp, TPMS).
+  * `getValue(int propId, int areaId)`: Returns `VirtualCarValue` containing typed telemetry (e.g. Battery SoC %, Gear, Speed, Cabin Temp, TPMS, Range).
 * **Writing Commands (Transact Code 2)**:
   * `setValue(VirtualCarValue value)`: Actuates vehicle hardware with polymorphic value serialization. Status code `0 == OK / success`.
 * **Event Subscription (Transact Code 5 & 6)**:
@@ -70,11 +70,12 @@ Speech engine providing in-cabin TTS (`0x1b`) and external vehicle speaker broad
 
 | Domain | What It Controls | Verified Property IDs (Ground Truth) |
 |:---|:---|:---|
-| ⚡ **Powertrain & Battery** | Live Speed, Gear (`P/R/N/D`), Battery SoC %, EV Range DTE, Display DTE, Total Odometer, Battery Preconditioning | `0x11600207`, `0x31600202`, `0x31400231`, `0x3140028c`, `0x31400501`, `0x31600205`, `0x31600204`, `0x314006c6` |
+| ⚡ **Powertrain & Battery** | Live Speed, Gear (`P/R/N/D`), Battery SoC %, C857 Range, EV Range DTE, Display DTE, Total Odometer, Battery Preconditioning | `0x11600207`, `0x31600202`, `0x31400231`, `0x11400400`, `0x3140028c`, `0x314006c4`, `0x31400501`, `0x31600205`, `0x31600204`, `0x314006c6` |
 | 📊 **Trip & REEV Dynamics** | Trip Electric Consumption (kWh/100km), REEV Fuel Consumption (L/100km), Electric/Fuel Distances & Times | `0x314005a6`, `0x314005cf`, `0x314005ce`, `0x31400590`, `0x31400591`, `0x314005ae`, `0x314005af` |
-| 🛞 **Tire Pressure (TPMS)** | Real-Time Tire Pressures in Bar for FL (`0x01`), FR (`0x02`), RL (`0x04`), RR (`0x08`) | `0x37600211` |
-| ❄️ **Climate & HVAC** | Dual-Zone Temperature (17.5°C-32.5°C), Cabin Internal Thermometer, 8 Fan Speeds, AC, Front/Rear Defrost, Recirculation, Auto | `0x35600105`, `0x38600112`, `0x35400109`, `0x35400102`, `0x33400103`, `0x3540010c`, `0x35400108`, `0x35400104` |
-| 💺 **Seat Comfort** | 3-Level Heating, 3-Level Ventilation, Pneumatic Massage (Modes 1-3, Levels 1-8), Steering Heat | `0x3540010f`, `0x1540050b`, `0x35400111`, `0x31400b2f`, `0x31400b31`, `0x31400b30`, `0x314003eb` |
-| 🚪 **Doors & Access** | Individual 4-Door Sensing (`0x01`, `0x04`, `0x10`, `0x40`), 4 Power Windows, Power Tailgate Actuate & Status, Central Locks, Sunroof Sunshade | `0x36400311`, `0x33400301`, `0x31400313`, `0x31400314`, `0x314003eb`, `wt.vehiclesetting` (0x40) |
-| 💡 **Cabin Lighting** | Ambient Light Color Presets & Brightness, Air Purifier | `0x3140039a`, `0x3140039b`, `0x35400122` |
+| 🛞 **Tire Pressure (TPMS)** | Real-Time Tire Pressures in Bar for FL (`0x01`), FR (`0x02`), RL (`0x04`), RR (`0x08`), Legacy TPMS ID | `0x37600211`, `0x31410605` |
+| ❄️ **Climate & HVAC** | Dual-Zone Temperature (17.5°C-32.5°C), Cabin Internal Thermometer, 8 Fan Speeds, AC, Front/Rear Defrost, Recirculation, Auto, Sync | `0x35600105`, `0x38600112`, `0x35400109`, `0x35400102`, `0x33400103`, `0x3540010c`, `0x35400108`, `0x35400104`, `0x3540010d` |
+| 💺 **Seat Comfort** | 3-Level Heating, 3-Level Ventilation, Pneumatic Massage (Pattern Modes 1-8: `0x31400b30`, Intensity Levels 1-3: `0x31400b31`), Steering Heat | `0x3540010f`, `0x1540050b`, `0x35400111`, `0x31400b2f`, `0x31400b30`, `0x31400b31`, `0x314003eb` |
+| 🚪 **Doors & Access** | Individual 4-Door Sensing (`0x01`, `0x04`, `0x10`, `0x40`), 4 Power Windows, Power Tailgate Actuate & Status, Central Locks, Sunroof Sunshade | `0x36400311`, `0x33400301`, `0x33400300`, `0x31400313`, `0x31400314`, `0x314003eb`, `0x31400303`, `wt.vehiclesetting` (0x40) |
+| 💡 **Cabin Lighting** | Ambient Light Preset Color & Toggle (`0x3140039a`), Brightness (`0x3140039b`), Color Choices (54, 42, 33, 12, 6, 1), Dynamic Patterns 1-3 (`0x31400677`), Air Purifier (`0x35400122`) | `0x3140039a`, `0x3140039b`, `0x31400677`, `0x35400122` |
+| 🏎️ **Drive Dynamics & ADAS** | Drive Mode (`0x3140040d` / `0x314003f5`), Auto Emergency Braking (`0x3140040d` / `0x31400244`) | `0x3140040d`, `0x314003f5`, `0x31400244` |
 | 🔊 **Audio & Voice** | Outside Speaker Music Event, In-Cabin & Outside Vehicle Speech TTS | Audio Event `0x66`, Speech Transacts `0x1b`, `0x62` |

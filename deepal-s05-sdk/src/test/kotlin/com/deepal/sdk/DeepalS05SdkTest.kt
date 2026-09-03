@@ -1,6 +1,21 @@
 package com.deepal.sdk
 
+import com.deepal.sdk.device.DetectionField
+import com.deepal.sdk.device.DeviceInfo
+import com.deepal.sdk.device.FingerprintRule
+import com.deepal.sdk.device.VehicleProfiles
+import com.deepal.sdk.vehicle.BuiltInProfiles
+import com.deepal.sdk.vehicle.CabinGearRead
+import com.deepal.sdk.vehicle.CabinLevelWrite
+import com.deepal.sdk.vehicle.CabinPositionWrite
+import com.deepal.sdk.vehicle.CabinTempWrite
+import com.deepal.sdk.vehicle.VehicleConfigurations
+import com.deepal.sdk.vehicle.VendorType
+import com.deepal.sdk.vehicle.WriteChannel
+import com.deepal.sdk.vehicle.WriteIntent
+import com.deepal.sdk.vehicle.WritePlan
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -21,15 +36,23 @@ class DeepalS05SdkTest {
         assertEquals(0x11600207, DeepalS05Property.PROP_VEHICLE_SPEED_VHAL)
         assertEquals(0x31600202, DeepalS05Property.PROP_VEHICLE_SPEED_VC)
         assertEquals(0x31400231, DeepalS05Property.PROP_GEAR_SELECTION)
+        assertEquals(0x11400400, DeepalS05Property.PROP_GEAR_SELECTION_VHAL)
         assertEquals(0x3140028c, DeepalS05Property.PROP_BATTERY_SOC)
         assertEquals(0x1b, DeepalS05Property.AREA_SOC)
+        assertEquals(0x314006c4, DeepalS05Property.PROP_REMAINING_RANGE_C857)
         assertEquals(0x31400501, DeepalS05Property.PROP_REMAINING_RANGE_EV_DTE)
         assertEquals(0x31600205, DeepalS05Property.PROP_REMAINING_RANGE_DISP_DTE)
         assertEquals(0x31600204, DeepalS05Property.PROP_ODOMETER)
         assertEquals(1000f, DeepalS05Property.ODOMETER_SCALE_DIVISOR, 0.001f)
 
+        // CAN Bus signal definitions for Deepal S05 C857
+        assertEquals(0x21410605, DeepalS05Property.PROP_CAN_SPEED_GEAR)
+        assertEquals(0x31600204, DeepalS05Property.PROP_CAN_STEERING)
+        assertEquals(0x31410605, DeepalS05Property.PROP_CAN_HVAC_TPMS)
+
         // Tire pressure & areas
         assertEquals(0x37600211, DeepalS05Property.PROP_TIRE_PRESSURE)
+        assertEquals(0x31410605, DeepalS05Property.PROP_TIRE_PRESSURE_LEGACY)
         assertEquals(0x01, DeepalS05Property.AREA_TIRE_FL)
         assertEquals(0x02, DeepalS05Property.AREA_TIRE_FR)
         assertEquals(0x04, DeepalS05Property.AREA_TIRE_RL)
@@ -42,11 +65,14 @@ class DeepalS05SdkTest {
         assertEquals(0x10, DeepalS05Property.AREA_DOOR_RL)
         assertEquals(0x40, DeepalS05Property.AREA_DOOR_RR)
 
-        // Tailgate & Drive Mode
+        // Tailgate & Drive Mode & AEB
         assertEquals(0x31400313, DeepalS05Property.PROP_TAILGATE_CONTROL)
         assertEquals(0x31400314, DeepalS05Property.PROP_TAILGATE_STATUS)
         assertEquals(0x31400314, DeepalS05Property.PROP_TAILGATE)
         assertEquals(0x3140040d, DeepalS05Property.PROP_DRIVE_MODE)
+        assertEquals(0x314003f5, DeepalS05Property.PROP_DRIVE_MODE_CHOICE)
+        assertEquals(0x3140040d, DeepalS05Property.PROP_AEB_COMMAND)
+        assertEquals(0x31400244, DeepalS05Property.PROP_AEB_SWITCH)
 
         // wt.vehiclesetting Sunshade, Sunroof, HUD & Chassis Transacts
         assertEquals(0x40, DeepalS05Property.TRANSACT_SET_SUNSHADE_POS)
@@ -92,26 +118,35 @@ class DeepalS05SdkTest {
         assertEquals(0x3540010c, DeepalS05Property.PROP_HVAC_DEFROST_REAR)
         assertEquals(0x38600112, DeepalS05Property.PROP_HVAC_INTERNAL_TEMP)
 
-        // Seats & Comfort
+        // Seats & Comfort (Verified against G2/E0)
         assertEquals(0x3540010f, DeepalS05Property.PROP_SEAT_HEATING)
         assertEquals(0x1540050b, DeepalS05Property.PROP_SEAT_HEATING_CPM)
         assertEquals(0x35400111, DeepalS05Property.PROP_SEAT_VENTILATION)
         assertEquals(0x31400b2f, DeepalS05Property.PROP_SEAT_MASSAGE_TOGGLE)
-        assertEquals(0x31400b31, DeepalS05Property.PROP_SEAT_MASSAGE_MODE)
-        assertEquals(0x31400b30, DeepalS05Property.PROP_SEAT_MASSAGE_LEVEL)
+        assertEquals(0x31400b30, DeepalS05Property.PROP_SEAT_MASSAGE_MODE) // Pattern 1..8
+        assertEquals(0x31400b31, DeepalS05Property.PROP_SEAT_MASSAGE_LEVEL) // Intensity 1..3
         assertEquals(0x314003eb, DeepalS05Property.PROP_STEERING_WHEEL_HEAT)
+
+        // Ambient lighting
+        assertEquals(0x3140039a, DeepalS05Property.PROP_AMBIENT_LIGHT)
+        assertEquals(0x3140039b, DeepalS05Property.PROP_AMBIENT_LIGHT_BRIGHTNESS)
+        assertEquals(0x31400677, DeepalS05Property.PROP_AMBIENT_LIGHT_PATTERN)
+        assertTrue(DeepalS05Property.AMBIENT_COLOR_CHOICES.contains(54))
+        assertTrue(DeepalS05Property.AMBIENT_COLOR_CHOICES.contains(1))
 
         // Windows & Body
         assertEquals(0x33400300, DeepalS05Property.PROP_WINDOW_POS)
         assertEquals(0x31400300, DeepalS05Property.PROP_WINDOW_POS_VC)
         assertEquals(0x33400301, DeepalS05Property.PROP_WINDOW_MOVE)
         assertEquals(0x31400303, DeepalS05Property.PROP_WINDOW_LOCK)
+        assertEquals(0x31400303, DeepalS05Property.PROP_SUNSHADE_POS_VC)
         assertEquals(0x314003eb, DeepalS05Property.PROP_DOOR_LOCK)
         assertEquals(0x314006c6, DeepalS05Property.PROP_BATTERY_PRECONDITIONING)
         assertEquals(0x31400277, DeepalS05Property.PROP_RAIN_SENSOR_STATE)
 
         // Audio & Outside Speaker
         assertEquals(0x66, DeepalS05Property.AUDIO_EVENT_OUTSIDE_MUSIC)
+
         // Wind direction & Drive Mode
         assertEquals(0x35400107, DeepalS05Property.PROP_HVAC_FAN_DIRECTION)
         assertEquals(8, DeepalS05Property.WIND_DIRECTION_DEFROST)
@@ -131,6 +166,96 @@ class DeepalS05SdkTest {
     }
 
     @Test
+    fun testDeviceFingerprintDetection() {
+        // Deepal S05 (Model "C857")
+        val s05Info = DeviceInfo(model = "C857", product = "c857_car", manufacturer = "Changan")
+        val s05Detected = VehicleProfiles.detectCurrent(s05Info)
+        assertEquals("deepal-s05", s05Detected.id)
+        assertEquals("Deepal S05", s05Detected.label)
+        assertEquals("deepal-s05-c857", s05Detected.deviceProfileId)
+        assertTrue(s05Detected.isSupported)
+
+        // Generic fallback
+        val genericInfo = DeviceInfo(model = "UnknownModel", board = "other")
+        val genericDetected = VehicleProfiles.detectCurrent(genericInfo)
+        assertEquals("generic", genericDetected.id)
+
+        // Config resolution
+        val c857Config = VehicleProfiles.resolveVehicleConfig("deepal-s05")
+        assertNotNull(c857Config)
+        assertEquals("deepal-s05-c857", c857Config.id)
+        assertEquals(VendorType.VENDOR, c857Config.vendorType)
+        assertEquals(0x1030, c857Config.flags)
+
+        val c857Profile = VehicleProfiles.resolveVehicleProfile("deepal-s05")
+        assertEquals("deepal-s05-c857", c857Profile.id)
+    }
+
+    @Test
+    fun testBuiltInProfilesGroundTruth() {
+        val s05 = BuiltInProfiles.DEEPAL_S05_C857
+        assertEquals("deepal-s05-c857", s05.id)
+        assertEquals(0x3140028c, s05.soc.propId)
+        assertEquals(27, s05.soc.area)
+        assertEquals(0x314006c4, s05.range.propId)
+        assertEquals(0x31600204, s05.odometer.propId)
+        assertEquals(1000, s05.odometer.scaleToCanonical)
+
+        val writes = BuiltInProfiles.DEEPAL_S05_CABIN_WRITES
+        assertEquals(0x35600105, writes.driverTemp?.propId)
+        assertEquals(1, writes.driverTemp?.area)
+        assertEquals(17.5f, writes.driverTemp?.minC ?: 0f, 0.01f)
+        assertEquals(32.5f, writes.driverTemp?.maxC ?: 0f, 0.01f)
+        assertEquals(0x35400109, writes.fan?.propId)
+        assertEquals(1, writes.fan?.min)
+        assertEquals(8, writes.fan?.max)
+        assertEquals(0x31400b30, writes.driverMassageMode?.propId) // Pattern 1..8
+        assertEquals(8, writes.driverMassageMode?.max)
+        assertEquals(0x31400b31, writes.driverMassageLevel?.propId) // Intensity 1..3
+        assertEquals(3, writes.driverMassageLevel?.max)
+        assertEquals(0x31400677, writes.ambientPattern?.propId)
+        assertEquals(0x3140040d, writes.autoEmergencyBraking?.propId)
+    }
+
+    @Test
+    fun testWriteIntentPlanning() {
+        val client = DeepalS05Client()
+
+        // 1. TempSet planning
+        val tempWrite = CabinTempWrite(propId = 0x35600105, area = 1, minC = 17.5f, maxC = 32.5f)
+        val tempIntent = WriteIntent.TempSet(CabinGearRead(), tempWrite, targetC = 22.0f)
+        val tempPlan = client.planWrite(tempIntent, currentValue = 22.0f)
+        assertTrue(tempPlan is WritePlan.AlreadyThere)
+
+        val tempPlanProceed = client.planWrite(tempIntent, currentValue = 24.0f)
+        assertTrue(tempPlanProceed is WritePlan.Proceed)
+        assertEquals(22.0f, (tempPlanProceed as WritePlan.Proceed).valueToWrite.toFloat(), 0.01f)
+
+        // 2. Choice planning
+        val choiceWrite = BuiltInProfiles.DEEPAL_S05_CABIN_WRITES.ambientColour!!
+        val validChoiceIntent = WriteIntent.Choice(CabinGearRead(), choiceWrite, target = 54)
+        val choicePlan = client.planWrite(validChoiceIntent)
+        assertTrue(choicePlan is WritePlan.Proceed)
+
+        val invalidChoiceIntent = WriteIntent.Choice(CabinGearRead(), choiceWrite, target = 999)
+        val invalidChoicePlan = client.planWrite(invalidChoiceIntent)
+        assertTrue(invalidChoicePlan is WritePlan.Refused)
+
+        // 3. Command planning (parked only check)
+        val tailgateWrite = BuiltInProfiles.DEEPAL_S05_CABIN_WRITES.tailgate!!
+        val tailgateIntent = WriteIntent.Command(CabinGearRead(), tailgateWrite, desiredOn = true)
+        val tailgatePlan = client.planWrite(tailgateIntent) // default telemetry gear is "P"
+        assertTrue(tailgatePlan is WritePlan.Proceed)
+
+        // 4. Level step planning
+        val fanWrite = CabinLevelWrite(propId = 0x35400109, area = 1, min = 1, max = 8)
+        val fanIntent = WriteIntent.LevelStep(CabinGearRead(), fanWrite, targetLevel = 10) // out of range
+        val fanPlan = client.planWrite(fanIntent)
+        assertTrue(fanPlan is WritePlan.Proceed)
+        assertEquals(8, (fanPlan as WritePlan.Proceed).valueToWrite.toInt()) // clamped to 8
+    }
+
+    @Test
     fun testTelemetryDefaults() {
         val telemetry = DeepalS05Telemetry()
         assertEquals("P", telemetry.gear)
@@ -140,6 +265,13 @@ class DeepalS05SdkTest {
         assertEquals(false, telemetry.mirrorsFolded)
         assertEquals(false, telemetry.isTailgateOpen)
         assertEquals(false, telemetry.isSunroofOpen)
+        assertEquals(false, telemetry.isSeatMassageOn)
+        assertEquals(1, telemetry.seatMassageMode)
+        assertEquals(1, telemetry.seatMassageLevel)
+        assertEquals(false, telemetry.isPassengerSeatMassageOn)
+        assertEquals(1, telemetry.ambientLightPattern)
+        assertEquals(54, telemetry.ambientLightColorChoice)
+        assertEquals("deepal-s05-c857", telemetry.detectedProfileId)
     }
 
     @Test

@@ -1,6 +1,19 @@
 package com.deepal.sdk
 
 import android.util.Log
+import com.deepal.sdk.device.DeviceInfo
+import com.deepal.sdk.device.VehicleDeviceProfile
+import com.deepal.sdk.device.VehicleProfiles
+import com.deepal.sdk.vehicle.BuiltInProfiles
+import com.deepal.sdk.vehicle.CabinChoiceWrite
+import com.deepal.sdk.vehicle.CabinCommandWrite
+import com.deepal.sdk.vehicle.CabinLevelWrite
+import com.deepal.sdk.vehicle.CabinPositionWrite
+import com.deepal.sdk.vehicle.CabinTempWrite
+import com.deepal.sdk.vehicle.VehicleProfile
+import com.deepal.sdk.vehicle.WriteIntent
+import com.deepal.sdk.vehicle.WritePlan
+import com.deepal.sdk.vehicle.WriteResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -14,10 +27,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * Main SDK Client for Changan Deepal S05 vehicle interaction.
+ * Main SDK Client for Changan Deepal S05 vehicle interaction and EPA OpenOS multi-domain actuation.
  *
- * Provides reactive StateFlow telemetry monitoring and asynchronous actuation methods
- * for Dual-Zone Climate, Seat Comfort, Windows/Doors, Sunroof Shade, and Next-Gen EV features.
+ * Provides reactive StateFlow telemetry monitoring, asynchronous actuation methods,
+ * and the unified VehicleProfile / WriteIntent execution pipeline.
  */
 class DeepalS05Client(
     val connection: VirtualCarConnection = VirtualCarConnection(),
@@ -29,7 +42,17 @@ class DeepalS05Client(
         private const val TAG = "DeepalS05Client"
     }
 
-    private val _telemetry = MutableStateFlow(DeepalS05Telemetry())
+    val detectedDeviceProfile: VehicleDeviceProfile by lazy {
+        VehicleProfiles.detectCurrent()
+    }
+
+    val activeVehicleProfile: VehicleProfile by lazy {
+        VehicleProfiles.resolveVehicleProfile(detectedDeviceProfile.id)
+    }
+
+    private val _telemetry = MutableStateFlow(
+        DeepalS05Telemetry(detectedProfileId = detectedDeviceProfile.deviceProfileId)
+    )
     val telemetry: StateFlow<DeepalS05Telemetry> = _telemetry.asStateFlow()
 
     private var pollingJob: Job? = null
@@ -62,6 +85,7 @@ class DeepalS05Client(
 
                         // Reverse-engineered OpenOS Gear mapping: 0/4=P, 1=N, 2=R, 3/8=D
                         val gearCode = connection.getIntProperty(DeepalS05Property.PROP_GEAR_SELECTION)
+                            ?: connection.getIntProperty(DeepalS05Property.PROP_GEAR_SELECTION_VHAL)
                         val gearStr = when (gearCode) {
                             0, 4 -> "P"
                             1 -> "N"
@@ -72,31 +96,72 @@ class DeepalS05Client(
 
                         // Slower metrics (every 1000ms = 4 ticks)
                         if (slowTick % 4 == 0) {
-                            val soc = connection.getIntProperty(DeepalS05Property.PROP_BATTERY_SOC, DeepalS05Property.AREA_SOC)
+                            val soc = connection.getIntProperty(
+                                DeepalS05Property.PROP_BATTERY_SOC,
+                                DeepalS05Property.AREA_SOC
+                            )
                                 ?: _telemetry.value.batterySocPercent
 
-                            val evDte = connection.getIntProperty(DeepalS05Property.PROP_REMAINING_RANGE_EV_DTE, DeepalS05Property.AREA_GLOBAL)
+                            val c857Range = connection.getIntProperty(
+                                DeepalS05Property.PROP_REMAINING_RANGE_C857,
+                                DeepalS05Property.AREA_GLOBAL
+                            )
+                            val evDte = connection.getIntProperty(
+                                DeepalS05Property.PROP_REMAINING_RANGE_EV_DTE,
+                                DeepalS05Property.AREA_GLOBAL
+                            )
+                                ?: c857Range
                                 ?: _telemetry.value.evRemainingRangeKm
 
-                            val range = connection.getIntProperty(DeepalS05Property.PROP_REMAINING_RANGE_DISP_DTE, DeepalS05Property.AREA_GLOBAL)
+                            val range = c857Range
+                                ?: connection.getIntProperty(
+                                    DeepalS05Property.PROP_REMAINING_RANGE_DISP_DTE,
+                                    DeepalS05Property.AREA_GLOBAL
+                                )
                                 ?: evDte
 
                             val odoRaw = connection.getFloatProperty(DeepalS05Property.PROP_ODOMETER)
-                            val odoKm = if (odoRaw != null) odoRaw / DeepalS05Property.ODOMETER_SCALE_DIVISOR else _telemetry.value.odometerKm
+                            val odoKm =
+                                if (odoRaw != null) odoRaw / DeepalS05Property.ODOMETER_SCALE_DIVISOR else _telemetry.value.odometerKm
 
-                            val temp = connection.getFloatProperty(DeepalS05Property.PROP_HVAC_TEMP_SET, DeepalS05Property.AREA_DRIVER)
+                            val temp = connection.getFloatProperty(
+                                DeepalS05Property.PROP_HVAC_TEMP_SET,
+                                DeepalS05Property.AREA_DRIVER
+                            )
                                 ?: _telemetry.value.climateTempC
 
-                            val cabinInsideTemp = connection.getFloatProperty(DeepalS05Property.PROP_HVAC_INTERNAL_TEMP, DeepalS05Property.AREA_DRIVER)
+                            val passTemp = connection.getFloatProperty(
+                                DeepalS05Property.PROP_HVAC_TEMP_SET,
+                                DeepalS05Property.AREA_PASSENGER
+                            )
+                                ?: _telemetry.value.passengerTempC
+
+                            val cabinInsideTemp = connection.getFloatProperty(
+                                DeepalS05Property.PROP_HVAC_INTERNAL_TEMP,
+                                DeepalS05Property.AREA_DRIVER
+                            )
                                 ?: _telemetry.value.cabinInternalTempC
 
-                            val fan = connection.getIntProperty(DeepalS05Property.PROP_HVAC_FAN_SPEED, DeepalS05Property.AREA_DRIVER)
+                            val fan = connection.getIntProperty(
+                                DeepalS05Property.PROP_HVAC_FAN_SPEED,
+                                DeepalS05Property.AREA_DRIVER
+                            )
                                 ?: _telemetry.value.fanSpeed
 
-                            val wind = connection.getIntProperty(DeepalS05Property.PROP_HVAC_FAN_DIRECTION, DeepalS05Property.AREA_DRIVER)
+                            val wind = connection.getIntProperty(
+                                DeepalS05Property.PROP_HVAC_FAN_DIRECTION,
+                                DeepalS05Property.AREA_DRIVER
+                            )
                                 ?: _telemetry.value.windDirection
 
-                            val driveCode = connection.getIntProperty(DeepalS05Property.PROP_DRIVE_MODE, DeepalS05Property.AREA_GLOBAL)
+                            val driveCode = connection.getIntProperty(
+                                DeepalS05Property.PROP_DRIVE_MODE,
+                                DeepalS05Property.AREA_GLOBAL
+                            )
+                                ?: connection.getIntProperty(
+                                    DeepalS05Property.PROP_DRIVE_MODE_CHOICE,
+                                    DeepalS05Property.AREA_GLOBAL
+                                )
                             val driveModeStr = when (driveCode) {
                                 DeepalS05Property.DRIVE_MODE_COMFORT -> "COMFORT"
                                 DeepalS05Property.DRIVE_MODE_SPORT -> "SPORT"
@@ -105,33 +170,121 @@ class DeepalS05Client(
                                 else -> _telemetry.value.driveMode
                             }
 
-                            val isPrecond = connection.getIntProperty(DeepalS05Property.PROP_BATTERY_PRECONDITIONING) == 1
-                            val rainState = connection.getIntProperty(DeepalS05Property.PROP_RAIN_SENSOR_STATE) ?: _telemetry.value.rainSensorState
+                            val isPrecond =
+                                connection.getIntProperty(DeepalS05Property.PROP_BATTERY_PRECONDITIONING) == 1
+                            val rainState = connection.getIntProperty(DeepalS05Property.PROP_RAIN_SENSOR_STATE)
+                                ?: _telemetry.value.rainSensorState
 
                             // Individual Door open states (Area bitmasks: FL=0x01, FR=0x04, RL=0x10, RR=0x40)
-                            val flOpen = connection.getIntProperty(DeepalS05Property.PROP_DOORS, DeepalS05Property.AREA_DOOR_FL) == 1
-                            val frOpen = connection.getIntProperty(DeepalS05Property.PROP_DOORS, DeepalS05Property.AREA_DOOR_FR) == 1
-                            val rlOpen = connection.getIntProperty(DeepalS05Property.PROP_DOORS, DeepalS05Property.AREA_DOOR_RL) == 1
-                            val rrOpen = connection.getIntProperty(DeepalS05Property.PROP_DOORS, DeepalS05Property.AREA_DOOR_RR) == 1
-                            val trunkOpen = connection.getIntProperty(DeepalS05Property.PROP_TAILGATE_STATUS, DeepalS05Property.AREA_GLOBAL) == 1
+                            val flOpen = connection.getIntProperty(
+                                DeepalS05Property.PROP_DOORS,
+                                DeepalS05Property.AREA_DOOR_FL
+                            ) == 1
+                            val frOpen = connection.getIntProperty(
+                                DeepalS05Property.PROP_DOORS,
+                                DeepalS05Property.AREA_DOOR_FR
+                            ) == 1
+                            val rlOpen = connection.getIntProperty(
+                                DeepalS05Property.PROP_DOORS,
+                                DeepalS05Property.AREA_DOOR_RL
+                            ) == 1
+                            val rrOpen = connection.getIntProperty(
+                                DeepalS05Property.PROP_DOORS,
+                                DeepalS05Property.AREA_DOOR_RR
+                            ) == 1
+                            val trunkOpen = connection.getIntProperty(
+                                DeepalS05Property.PROP_TAILGATE_STATUS,
+                                DeepalS05Property.AREA_GLOBAL
+                            ) == 1
 
                             // Sunshade position from wt.vehiclesetting
                             val shadePercent = connection.getSunshadePos()
-                            val isSunshadeOpen = if (shadePercent != null) shadePercent > 0 else _telemetry.value.isSunroofOpen
+                            val isSunshadeOpen =
+                                if (shadePercent != null) shadePercent > 0 else _telemetry.value.isSunroofOpen
 
                             // Tire pressure telemetry (Bar)
-                            val tireFl = connection.getFloatProperty(DeepalS05Property.PROP_TIRE_PRESSURE, DeepalS05Property.AREA_TIRE_FL) ?: _telemetry.value.tirePressureFlBar
-                            val tireFr = connection.getFloatProperty(DeepalS05Property.PROP_TIRE_PRESSURE, DeepalS05Property.AREA_TIRE_FR) ?: _telemetry.value.tirePressureFrBar
-                            val tireRl = connection.getFloatProperty(DeepalS05Property.PROP_TIRE_PRESSURE, DeepalS05Property.AREA_TIRE_RL) ?: _telemetry.value.tirePressureRlBar
-                            val tireRr = connection.getFloatProperty(DeepalS05Property.PROP_TIRE_PRESSURE, DeepalS05Property.AREA_TIRE_RR) ?: _telemetry.value.tirePressureRrBar
+                            val tireFl = connection.getFloatProperty(
+                                DeepalS05Property.PROP_TIRE_PRESSURE,
+                                DeepalS05Property.AREA_TIRE_FL
+                            ) ?: _telemetry.value.tirePressureFlBar
+                            val tireFr = connection.getFloatProperty(
+                                DeepalS05Property.PROP_TIRE_PRESSURE,
+                                DeepalS05Property.AREA_TIRE_FR
+                            ) ?: _telemetry.value.tirePressureFrBar
+                            val tireRl = connection.getFloatProperty(
+                                DeepalS05Property.PROP_TIRE_PRESSURE,
+                                DeepalS05Property.AREA_TIRE_RL
+                            ) ?: _telemetry.value.tirePressureRlBar
+                            val tireRr = connection.getFloatProperty(
+                                DeepalS05Property.PROP_TIRE_PRESSURE,
+                                DeepalS05Property.AREA_TIRE_RR
+                            ) ?: _telemetry.value.tirePressureRrBar
 
                             // Energy telemetry
-                            val elecAvg = connection.getFloatProperty(DeepalS05Property.PROP_THIS_TRIP_ELEC_AVG_CONSUMPTION, DeepalS05Property.AREA_GLOBAL) ?: _telemetry.value.tripElecAvgKwhPer100Km
-                            val oilAvg = connection.getFloatProperty(DeepalS05Property.PROP_THIS_TRIP_OIL_AVG_CONSUMPTION, DeepalS05Property.AREA_GLOBAL) ?: _telemetry.value.tripOilAvgLPer100Km
-                            val elecDist = connection.getFloatProperty(DeepalS05Property.PROP_THIS_TRIP_REEV_ELEC_DISTANCE, DeepalS05Property.AREA_GLOBAL) ?: _telemetry.value.tripElecDistanceKm
-                            val elecTime = connection.getIntProperty(DeepalS05Property.PROP_THIS_TRIP_REEV_ELEC_TIME, DeepalS05Property.AREA_GLOBAL) ?: _telemetry.value.tripElecTimeMinutes
-                            val fuelDist = connection.getFloatProperty(DeepalS05Property.PROP_THIS_TRIP_REEV_FUEL_DISTANCE, DeepalS05Property.AREA_GLOBAL) ?: _telemetry.value.tripFuelDistanceKm
-                            val fuelTime = connection.getIntProperty(DeepalS05Property.PROP_THIS_TRIP_REEV_FUEL_TIME, DeepalS05Property.AREA_GLOBAL) ?: _telemetry.value.tripFuelTimeMinutes
+                            val elecAvg = connection.getFloatProperty(
+                                DeepalS05Property.PROP_THIS_TRIP_ELEC_AVG_CONSUMPTION,
+                                DeepalS05Property.AREA_GLOBAL
+                            ) ?: _telemetry.value.tripElecAvgKwhPer100Km
+                            val oilAvg = connection.getFloatProperty(
+                                DeepalS05Property.PROP_THIS_TRIP_OIL_AVG_CONSUMPTION,
+                                DeepalS05Property.AREA_GLOBAL
+                            ) ?: _telemetry.value.tripOilAvgLPer100Km
+                            val elecDist = connection.getFloatProperty(
+                                DeepalS05Property.PROP_THIS_TRIP_REEV_ELEC_DISTANCE,
+                                DeepalS05Property.AREA_GLOBAL
+                            ) ?: _telemetry.value.tripElecDistanceKm
+                            val elecTime = connection.getIntProperty(
+                                DeepalS05Property.PROP_THIS_TRIP_REEV_ELEC_TIME,
+                                DeepalS05Property.AREA_GLOBAL
+                            ) ?: _telemetry.value.tripElecTimeMinutes
+                            val fuelDist = connection.getFloatProperty(
+                                DeepalS05Property.PROP_THIS_TRIP_REEV_FUEL_DISTANCE,
+                                DeepalS05Property.AREA_GLOBAL
+                            ) ?: _telemetry.value.tripFuelDistanceKm
+                            val fuelTime = connection.getIntProperty(
+                                DeepalS05Property.PROP_THIS_TRIP_REEV_FUEL_TIME,
+                                DeepalS05Property.AREA_GLOBAL
+                            ) ?: _telemetry.value.tripFuelTimeMinutes
+
+                            // Seat Massage Telemetry
+                            val driverMassageOn = connection.getIntProperty(
+                                DeepalS05Property.PROP_SEAT_MASSAGE_TOGGLE,
+                                DeepalS05Property.AREA_GLOBAL
+                            ) == 2
+                            val driverMassageMode = connection.getIntProperty(
+                                DeepalS05Property.PROP_SEAT_MASSAGE_MODE,
+                                DeepalS05Property.AREA_GLOBAL
+                            ) ?: _telemetry.value.seatMassageMode
+                            val driverMassageLevel = connection.getIntProperty(
+                                DeepalS05Property.PROP_SEAT_MASSAGE_LEVEL,
+                                DeepalS05Property.AREA_GLOBAL
+                            ) ?: _telemetry.value.seatMassageLevel
+                            val passMassageOn = connection.getIntProperty(
+                                DeepalS05Property.PROP_SEAT_MASSAGE_TOGGLE,
+                                DeepalS05Property.AREA_PASSENGER
+                            ) == 2
+                            val passMassageMode = connection.getIntProperty(
+                                DeepalS05Property.PROP_SEAT_MASSAGE_MODE,
+                                DeepalS05Property.AREA_PASSENGER
+                            ) ?: _telemetry.value.passengerSeatMassageMode
+                            val passMassageLevel = connection.getIntProperty(
+                                DeepalS05Property.PROP_SEAT_MASSAGE_LEVEL,
+                                DeepalS05Property.AREA_PASSENGER
+                            ) ?: _telemetry.value.passengerSeatMassageLevel
+
+                            // Ambient lighting pattern & AEB
+                            val ambPattern = connection.getIntProperty(
+                                DeepalS05Property.PROP_AMBIENT_LIGHT_PATTERN,
+                                DeepalS05Property.AREA_GLOBAL
+                            ) ?: _telemetry.value.ambientLightPattern
+                            val ambChoice = connection.getIntProperty(
+                                DeepalS05Property.PROP_AMBIENT_LIGHT_COLOR_CHOICE,
+                                DeepalS05Property.AREA_GLOBAL
+                            ) ?: _telemetry.value.ambientLightColorChoice
+                            val aebOn = (connection.getIntProperty(
+                                DeepalS05Property.PROP_AEB_COMMAND,
+                                DeepalS05Property.AREA_GLOBAL
+                            ) ?: 2) == 2
 
                             _telemetry.value = _telemetry.value.copy(
                                 speedKmh = speedKmh,
@@ -141,6 +294,7 @@ class DeepalS05Client(
                                 evRemainingRangeKm = evDte,
                                 odometerKm = odoKm,
                                 climateTempC = temp,
+                                passengerTempC = passTemp,
                                 cabinInternalTempC = cabinInsideTemp,
                                 fanSpeed = fan,
                                 windDirection = wind,
@@ -163,6 +317,16 @@ class DeepalS05Client(
                                 tripElecTimeMinutes = elecTime,
                                 tripFuelDistanceKm = fuelDist,
                                 tripFuelTimeMinutes = fuelTime,
+                                isSeatMassageOn = driverMassageOn,
+                                seatMassageMode = driverMassageMode,
+                                seatMassageLevel = driverMassageLevel,
+                                isPassengerSeatMassageOn = passMassageOn,
+                                passengerSeatMassageMode = passMassageMode,
+                                passengerSeatMassageLevel = passMassageLevel,
+                                ambientLightPattern = ambPattern,
+                                ambientLightColorChoice = ambChoice,
+                                isAebOn = aebOn,
+                                detectedProfileId = detectedDeviceProfile.deviceProfileId,
                                 isVirtualCarConnected = true
                             )
                         } else {
@@ -192,6 +356,114 @@ class DeepalS05Client(
     }
 
     // ==========================================
+    // Unified Write Planning & Intent Execution
+    // ==========================================
+
+    /**
+     * Validates and creates an execution plan for a WriteIntent.
+     */
+    fun planWrite(intent: WriteIntent, currentValue: Number? = null): WritePlan {
+        return when (intent) {
+            is WriteIntent.Choice -> {
+                if (!intent.write.choices.contains(intent.target)) {
+                    WritePlan.Refused("Target choice ${intent.target} not in valid choices ${intent.write.choices}")
+                } else if (currentValue?.toInt() == intent.target) {
+                    WritePlan.AlreadyThere(intent.target)
+                } else {
+                    WritePlan.Proceed(intent.target)
+                }
+            }
+
+            is WriteIntent.Command -> {
+                val desiredRaw = if (intent.desiredOn) intent.write.onCommand else intent.write.offCommand
+                if (intent.write.parkedOnly && _telemetry.value.gear != "P") {
+                    WritePlan.Refused("Command requires vehicle to be in Parked (P) gear")
+                } else if (currentValue?.toInt() == desiredRaw) {
+                    WritePlan.AlreadyThere(desiredRaw)
+                } else {
+                    WritePlan.Proceed(desiredRaw)
+                }
+            }
+
+            is WriteIntent.LevelStep -> {
+                val clamped = intent.targetLevel.coerceIn(intent.write.min, intent.write.max)
+                if (currentValue?.toInt() == clamped) {
+                    WritePlan.AlreadyThere(clamped)
+                } else {
+                    WritePlan.Proceed(clamped)
+                }
+            }
+
+            is WriteIntent.Position -> {
+                val target = (intent.targetPct ?: 0).coerceIn(intent.write.min, intent.write.max)
+                if (currentValue?.toInt() == target) {
+                    WritePlan.AlreadyThere(target)
+                } else {
+                    WritePlan.Proceed(target)
+                }
+            }
+
+            is WriteIntent.TempSet -> {
+                val clamped = intent.targetC.coerceIn(intent.write.minC, intent.write.maxC)
+                if (currentValue?.toFloat() == clamped) {
+                    WritePlan.AlreadyThere(clamped)
+                } else {
+                    WritePlan.Proceed(clamped)
+                }
+            }
+
+            is WriteIntent.TempStep -> {
+                val current = currentValue?.toFloat() ?: 24.0f
+                val target = (current + intent.deltaC).coerceIn(intent.write.minC, intent.write.maxC)
+                if (current == target) {
+                    WritePlan.AlreadyThere(target)
+                } else {
+                    WritePlan.Proceed(target)
+                }
+            }
+        }
+    }
+
+    /**
+     * Executes a WriteIntent against the physical vehicle hardware.
+     */
+    suspend fun executeWriteIntent(intent: WriteIntent): WriteResult = withContext(Dispatchers.IO) {
+        val plan = planWrite(intent)
+        when (plan) {
+            is WritePlan.Refused -> WriteResult.Refused(plan.reason)
+            is WritePlan.AlreadyThere -> WriteResult.Confirmed(plan.raw)
+            is WritePlan.Proceed -> {
+                val success = when (intent) {
+                    is WriteIntent.Choice -> {
+                        connection.setProperty(intent.write.propId, intent.write.area, plan.valueToWrite.toInt())
+                    }
+
+                    is WriteIntent.Command -> {
+                        connection.setProperty(intent.write.propId, intent.write.area, plan.valueToWrite.toInt())
+                    }
+
+                    is WriteIntent.LevelStep -> {
+                        connection.setProperty(intent.write.propId, intent.write.area, plan.valueToWrite.toInt())
+                    }
+
+                    is WriteIntent.Position -> {
+                        connection.setProperty(intent.write.propId, intent.write.area, plan.valueToWrite.toInt())
+                    }
+
+                    is WriteIntent.TempSet -> {
+                        connection.setProperty(intent.write.propId, intent.write.area, plan.valueToWrite.toFloat())
+                    }
+
+                    is WriteIntent.TempStep -> {
+                        connection.setProperty(intent.write.propId, intent.write.area, plan.valueToWrite.toFloat())
+                    }
+                }
+                if (success) WriteResult.Confirmed(plan.valueToWrite) else WriteResult.Failed("IPC transaction failed")
+            }
+        }
+    }
+
+    // ==========================================
     // 1. Dual-Zone Climate & Defrost Controls
     // ==========================================
 
@@ -200,29 +472,30 @@ class DeepalS05Client(
         val a = connection.setProperty(
             propId = DeepalS05Property.PROP_HVAC_POWER_ON,
             areaId = DeepalS05Property.AREA_DRIVER,
-            value = if (enabled) 1 else 2
+            value = if (enabled) 2 else 1 // onCommand=2, offCommand=1 in DEEPAL_S05_CABIN_WRITES
         )
         val b = connection.setProperty(
             propId = DeepalS05Property.PROP_HVAC_POWER_ON,
             areaId = DeepalS05Property.AREA_GLOBAL,
-            value = if (enabled) 1 else 2
+            value = if (enabled) 2 else 1
         )
         a || b
     }
 
-    suspend fun setClimateTemperature(tempC: Float, area: Int = DeepalS05Property.AREA_DRIVER): Boolean = withContext(Dispatchers.IO) {
-        val clamped = tempC.coerceIn(17.5f, 32.5f)
-        _telemetry.value = if (area == DeepalS05Property.AREA_DRIVER) {
-            _telemetry.value.copy(climateTempC = clamped)
-        } else {
-            _telemetry.value.copy(passengerTempC = clamped)
+    suspend fun setClimateTemperature(tempC: Float, area: Int = DeepalS05Property.AREA_DRIVER): Boolean =
+        withContext(Dispatchers.IO) {
+            val clamped = tempC.coerceIn(17.5f, 32.5f)
+            _telemetry.value = if (area == DeepalS05Property.AREA_DRIVER) {
+                _telemetry.value.copy(climateTempC = clamped)
+            } else {
+                _telemetry.value.copy(passengerTempC = clamped)
+            }
+            connection.setProperty(
+                propId = DeepalS05Property.PROP_HVAC_TEMP_SET,
+                areaId = area,
+                value = clamped
+            )
         }
-        connection.setProperty(
-            propId = DeepalS05Property.PROP_HVAC_TEMP_SET,
-            areaId = area,
-            value = clamped
-        )
-    }
 
     suspend fun setFanSpeed(speed: Int): Boolean = withContext(Dispatchers.IO) {
         val clamped = speed.coerceIn(1, 8)
@@ -252,7 +525,7 @@ class DeepalS05Client(
         )
         val b = connection.setProperty(
             propId = DeepalS05Property.PROP_HVAC_AUTO,
-            areaId = DeepalS05Property.AREA_GLOBAL,
+            areaId = 2, // Area 2 in CabinToggleWrite
             value = if (enabled) 1 else 2
         )
         a || b
@@ -268,11 +541,17 @@ class DeepalS05Client(
     }
 
     suspend fun setMaxAc(enabled: Boolean): Boolean = withContext(Dispatchers.IO) {
-        connection.setProperty(
+        val a = connection.setProperty(
             propId = DeepalS05Property.PROP_HVAC_MAX_AC,
             areaId = DeepalS05Property.AREA_DRIVER,
             value = if (enabled) 1 else 2
         )
+        val b = connection.setProperty(
+            propId = DeepalS05Property.PROP_HVAC_MAX_AC,
+            areaId = 2,
+            value = if (enabled) 1 else 2
+        )
+        a || b
     }
 
     suspend fun setSyncMode(enabled: Boolean): Boolean = withContext(Dispatchers.IO) {
@@ -285,11 +564,17 @@ class DeepalS05Client(
 
     suspend fun setFrontDefrost(enabled: Boolean): Boolean = withContext(Dispatchers.IO) {
         _telemetry.value = _telemetry.value.copy(isFrontDefrostOn = enabled)
-        connection.setProperty(
+        val a = connection.setProperty(
             propId = DeepalS05Property.PROP_HVAC_DEFROST_FRONT,
             areaId = DeepalS05Property.AREA_DRIVER,
             value = if (enabled) 1 else 2
         )
+        val b = connection.setProperty(
+            propId = DeepalS05Property.PROP_HVAC_DEFROST_FRONT,
+            areaId = 2,
+            value = if (enabled) 1 else 2
+        )
+        a || b
     }
 
     suspend fun setRearDefrost(enabled: Boolean): Boolean = withContext(Dispatchers.IO) {
@@ -339,68 +624,139 @@ class DeepalS05Client(
             else -> "COMFORT"
         }
         _telemetry.value = _telemetry.value.copy(driveMode = modeStr)
-        connection.setProperty(
+        val a = connection.setProperty(
             propId = DeepalS05Property.PROP_DRIVE_MODE,
             areaId = DeepalS05Property.AREA_GLOBAL,
             value = mode
         )
+        val b = connection.setProperty(
+            propId = DeepalS05Property.PROP_DRIVE_MODE_CHOICE,
+            areaId = DeepalS05Property.AREA_GLOBAL,
+            value = mode
+        )
+        a || b
+    }
+
+    /**
+     * Sets Auto Emergency Braking (AEB) ADAS status.
+     */
+    suspend fun setAutoEmergencyBraking(enabled: Boolean): Boolean = withContext(Dispatchers.IO) {
+        _telemetry.value = _telemetry.value.copy(isAebOn = enabled)
+        val a = connection.setProperty(
+            propId = DeepalS05Property.PROP_AEB_COMMAND,
+            areaId = DeepalS05Property.AREA_GLOBAL,
+            value = if (enabled) 2 else 1
+        )
+        val b = connection.setProperty(
+            propId = DeepalS05Property.PROP_AEB_SWITCH,
+            areaId = DeepalS05Property.AREA_GLOBAL,
+            value = if (enabled) 1 else 2
+        )
+        a || b
     }
 
     // ==========================================
     // 2. Seat Comfort & Massage Controls
     // ==========================================
 
-    suspend fun setSeatHeating(level: Int, area: Int = DeepalS05Property.AREA_DRIVER): Boolean = withContext(Dispatchers.IO) {
-        val clamped = level.coerceIn(0, 3)
-        _telemetry.value = if (area == DeepalS05Property.AREA_DRIVER) {
-            _telemetry.value.copy(driverSeatHeat = clamped)
-        } else {
-            _telemetry.value.copy(passengerSeatHeat = clamped)
+    suspend fun setSeatHeating(level: Int, area: Int = DeepalS05Property.AREA_DRIVER): Boolean =
+        withContext(Dispatchers.IO) {
+            val clamped = level.coerceIn(0, 3)
+            _telemetry.value = if (area == DeepalS05Property.AREA_DRIVER) {
+                _telemetry.value.copy(driverSeatHeat = clamped)
+            } else {
+                _telemetry.value.copy(passengerSeatHeat = clamped)
+            }
+            val vcOk = connection.setProperty(
+                propId = DeepalS05Property.PROP_SEAT_HEATING,
+                areaId = area,
+                value = clamped
+            )
+            val cpmOk = connection.setProperty(
+                propId = DeepalS05Property.PROP_SEAT_HEATING_CPM,
+                areaId = area,
+                value = clamped
+            )
+            vcOk || cpmOk
         }
-        val vcOk = connection.setProperty(
-            propId = DeepalS05Property.PROP_SEAT_HEATING,
-            areaId = area,
-            value = clamped
-        )
-        val cpmOk = connection.setProperty(
-            propId = DeepalS05Property.PROP_SEAT_HEATING_CPM,
-            areaId = area,
-            value = clamped
-        )
-        vcOk || cpmOk
-    }
 
-    suspend fun setSeatVentilation(level: Int, area: Int = DeepalS05Property.AREA_DRIVER): Boolean = withContext(Dispatchers.IO) {
-        val clamped = level.coerceIn(0, 3)
-        _telemetry.value = if (area == DeepalS05Property.AREA_DRIVER) {
-            _telemetry.value.copy(driverSeatVent = clamped)
-        } else {
-            _telemetry.value.copy(passengerSeatVent = clamped)
+    suspend fun setSeatVentilation(level: Int, area: Int = DeepalS05Property.AREA_DRIVER): Boolean =
+        withContext(Dispatchers.IO) {
+            val clamped = level.coerceIn(0, 3)
+            _telemetry.value = if (area == DeepalS05Property.AREA_DRIVER) {
+                _telemetry.value.copy(driverSeatVent = clamped)
+            } else {
+                _telemetry.value.copy(passengerSeatVent = clamped)
+            }
+            connection.setProperty(
+                propId = DeepalS05Property.PROP_SEAT_VENTILATION,
+                areaId = area,
+                value = clamped
+            )
         }
-        connection.setProperty(
-            propId = DeepalS05Property.PROP_SEAT_VENTILATION,
-            areaId = area,
-            value = clamped
-        )
-    }
 
+    /**
+     * Controls driver pneumatic seat massage.
+     * @param mode: Pattern 1..8 (PROP_SEAT_MASSAGE_MODE = 0x31400b30)
+     * @param level: Intensity 1..3 (PROP_SEAT_MASSAGE_LEVEL = 0x31400b31)
+     */
     suspend fun setSeatMassage(enabled: Boolean, mode: Int = 1, level: Int = 2): Boolean = withContext(Dispatchers.IO) {
+        val clampedMode = mode.coerceIn(1, 8)
+        val clampedLevel = level.coerceIn(1, 3)
         _telemetry.value = _telemetry.value.copy(
             isSeatMassageOn = enabled,
-            seatMassageMode = mode,
-            seatMassageLevel = level
+            seatMassageMode = clampedMode,
+            seatMassageLevel = clampedLevel
         )
         connection.setProperty(
             propId = DeepalS05Property.PROP_SEAT_MASSAGE_TOGGLE,
             areaId = DeepalS05Property.AREA_GLOBAL,
-            value = if (enabled) 1 else 2
+            value = if (enabled) 2 else 1 // onCommand=2, offCommand=1 in DEEPAL_S05_CABIN_WRITES
         )
         if (enabled) {
-            connection.setProperty(DeepalS05Property.PROP_SEAT_MASSAGE_MODE, DeepalS05Property.AREA_GLOBAL, mode)
-            connection.setProperty(DeepalS05Property.PROP_SEAT_MASSAGE_LEVEL, DeepalS05Property.AREA_GLOBAL, level)
+            connection.setProperty(DeepalS05Property.PROP_SEAT_MASSAGE_MODE, DeepalS05Property.AREA_GLOBAL, clampedMode)
+            connection.setProperty(
+                DeepalS05Property.PROP_SEAT_MASSAGE_LEVEL,
+                DeepalS05Property.AREA_GLOBAL,
+                clampedLevel
+            )
         }
         true
     }
+
+    /**
+     * Controls front passenger pneumatic seat massage.
+     * @param mode: Pattern 1..8 (Area 4)
+     * @param level: Intensity 1..3 (Area 4)
+     */
+    suspend fun setPassengerSeatMassage(enabled: Boolean, mode: Int = 1, level: Int = 2): Boolean =
+        withContext(Dispatchers.IO) {
+            val clampedMode = mode.coerceIn(1, 8)
+            val clampedLevel = level.coerceIn(1, 3)
+            _telemetry.value = _telemetry.value.copy(
+                isPassengerSeatMassageOn = enabled,
+                passengerSeatMassageMode = clampedMode,
+                passengerSeatMassageLevel = clampedLevel
+            )
+            connection.setProperty(
+                propId = DeepalS05Property.PROP_SEAT_MASSAGE_TOGGLE,
+                areaId = DeepalS05Property.AREA_PASSENGER,
+                value = if (enabled) 2 else 1
+            )
+            if (enabled) {
+                connection.setProperty(
+                    DeepalS05Property.PROP_SEAT_MASSAGE_MODE,
+                    DeepalS05Property.AREA_PASSENGER,
+                    clampedMode
+                )
+                connection.setProperty(
+                    DeepalS05Property.PROP_SEAT_MASSAGE_LEVEL,
+                    DeepalS05Property.AREA_PASSENGER,
+                    clampedLevel
+                )
+            }
+            true
+        }
 
     suspend fun setSteeringWheelHeat(enabled: Boolean): Boolean = withContext(Dispatchers.IO) {
         _telemetry.value = _telemetry.value.copy(isSteeringWheelHeatOn = enabled)
@@ -500,7 +856,7 @@ class DeepalS05Client(
     /**
      * Controls the electric sunroof sunshade roller blind.
      * @param actionOrPercent: 1 = Open (100%), 2 = Close (0%), 0 = Stop (50%), or direct percent 0..100.
-     * Dispatched via wt.vehiclesetting service (IVehicleSettingInterface.setSunshadePos).
+     * Dispatched via wt.vehiclesetting service (IVehicleSettingInterface.setSunshadePos) and VirtualCar fallback.
      */
     suspend fun setSunroofShade(actionOrPercent: Int): Boolean = withContext(Dispatchers.IO) {
         val targetPercent = when (actionOrPercent) {
@@ -510,7 +866,10 @@ class DeepalS05Client(
             else -> actionOrPercent.coerceIn(0, 100)
         }
         _telemetry.value = _telemetry.value.copy(isSunroofOpen = targetPercent > 0)
-        connection.setSunshadePos(targetPercent)
+        val settingOk = connection.setSunshadePos(targetPercent)
+        val vcOk =
+            connection.setProperty(DeepalS05Property.PROP_SUNSHADE_POS_VC, DeepalS05Property.AREA_GLOBAL, targetPercent)
+        settingOk || vcOk
     }
 
     /**
@@ -519,7 +878,10 @@ class DeepalS05Client(
     suspend fun setSunshadePercent(percent: Int): Boolean = withContext(Dispatchers.IO) {
         val clamped = percent.coerceIn(0, 100)
         _telemetry.value = _telemetry.value.copy(isSunroofOpen = clamped > 0)
-        connection.setSunshadePos(clamped)
+        val settingOk = connection.setSunshadePos(clamped)
+        val vcOk =
+            connection.setProperty(DeepalS05Property.PROP_SUNSHADE_POS_VC, DeepalS05Property.AREA_GLOBAL, clamped)
+        settingOk || vcOk
     }
 
     /**
@@ -543,14 +905,14 @@ class DeepalS05Client(
 
     /**
      * Actuates the power liftgate / trunk.
-     * Dispatches command to PROP_TAILGATE_CONTROL (0x31400313): 1=Open, 2=Close.
+     * Dispatches command to PROP_TAILGATE_CONTROL (0x31400313): onCommand=2 (Open), offCommand=1 (Close) or 1=Open, 2=Close.
      */
     suspend fun setTailgate(open: Boolean): Boolean = withContext(Dispatchers.IO) {
         _telemetry.value = _telemetry.value.copy(isTailgateOpen = open)
         connection.setProperty(
             propId = DeepalS05Property.PROP_TAILGATE_CONTROL,
             areaId = DeepalS05Property.AREA_GLOBAL,
-            value = if (open) 1 else 2
+            value = if (open) 2 else 1
         )
     }
 
@@ -559,7 +921,7 @@ class DeepalS05Client(
         connection.setProperty(
             propId = DeepalS05Property.PROP_DOOR_LOCK,
             areaId = DeepalS05Property.AREA_GLOBAL,
-            value = if (locked) 1 else 2
+            value = if (locked) 2 else 1 // onCommand=2, offCommand=1 in DEEPAL_S05_CABIN_WRITES
         )
     }
 
@@ -568,7 +930,6 @@ class DeepalS05Client(
      */
     suspend fun setDoorHandleExpanded(expanded: Boolean): Boolean = withContext(Dispatchers.IO) {
         _telemetry.value = _telemetry.value.copy(doorHandlesExpanded = expanded)
-        // Dispatches to VirtualCar body control layer
         connection.setProperty(
             propId = 0x314003ec,
             areaId = DeepalS05Property.AREA_GLOBAL,
@@ -619,8 +980,37 @@ class DeepalS05Client(
             ambientLightColor = colorIndex,
             ambientLightBrightness = brightness
         )
-        connection.setProperty(DeepalS05Property.PROP_AMBIENT_LIGHT, DeepalS05Property.AREA_GLOBAL, colorIndex)
-        connection.setProperty(DeepalS05Property.PROP_AMBIENT_LIGHT_BRIGHTNESS, DeepalS05Property.AREA_GLOBAL, brightness)
+        val a = connection.setProperty(DeepalS05Property.PROP_AMBIENT_LIGHT, DeepalS05Property.AREA_GLOBAL, 1)
+        val b = connection.setProperty(
+            DeepalS05Property.PROP_AMBIENT_LIGHT_BRIGHTNESS,
+            DeepalS05Property.AREA_GLOBAL,
+            brightness
+        )
+        a || b
+    }
+
+    /**
+     * Sets the dynamic ambient lighting pattern (1..3).
+     */
+    suspend fun setAmbientLightPattern(pattern: Int): Boolean = withContext(Dispatchers.IO) {
+        val clamped = pattern.coerceIn(1, 3)
+        _telemetry.value = _telemetry.value.copy(ambientLightPattern = clamped)
+        connection.setProperty(DeepalS05Property.PROP_AMBIENT_LIGHT_PATTERN, DeepalS05Property.AREA_GLOBAL, clamped)
+    }
+
+    /**
+     * Sets the preset ambient light color code (choices: 54, 42, 33, 12, 6, 1).
+     */
+    suspend fun setAmbientColorChoice(colorChoice: Int): Boolean = withContext(Dispatchers.IO) {
+        if (!DeepalS05Property.AMBIENT_COLOR_CHOICES.contains(colorChoice)) {
+            Log.w(TAG, "Color choice $colorChoice not in standard set: ${DeepalS05Property.AMBIENT_COLOR_CHOICES}")
+        }
+        _telemetry.value = _telemetry.value.copy(ambientLightColorChoice = colorChoice)
+        connection.setProperty(
+            DeepalS05Property.PROP_AMBIENT_LIGHT_COLOR_CHOICE,
+            DeepalS05Property.AREA_GLOBAL,
+            colorChoice
+        )
     }
 
     suspend fun setAirPurifier(enabled: Boolean): Boolean = withContext(Dispatchers.IO) {
@@ -727,6 +1117,7 @@ class DeepalS05Client(
                 setWindows(2)
                 setSunroofShade(2) // Close shade to prevent solar heating
             }
+
             "NAP" -> {
                 setWindows(2)
                 setSunroofShade(2)
@@ -737,18 +1128,21 @@ class DeepalS05Client(
                 setSeatMassage(true, mode = 1, level = 1)
                 setAmbientLight(2, 25) // Amber dim
             }
+
             "DEFROST" -> {
                 setFrontDefrost(true)
                 setRearDefrost(true)
                 setSteeringWheelHeat(true)
                 setSeatHeating(3, DeepalS05Property.AREA_DRIVER)
             }
+
             "CAMP" -> {
                 setClimatePower(true)
                 setClimateTemperature(23.0f, DeepalS05Property.AREA_DRIVER)
                 setFanSpeed(2)
                 setAmbientLight(3, 50) // Forest Emerald
             }
+
             else -> Unit
         }
         Unit

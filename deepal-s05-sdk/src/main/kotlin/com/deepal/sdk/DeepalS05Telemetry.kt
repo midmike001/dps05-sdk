@@ -1,9 +1,9 @@
 package com.deepal.sdk
 
 /**
- * Immutable vehicle telemetry data model representing the live state of Deepal S05.
+ * Immutable vehicle telemetry data model representing the live state of Deepal S05 / EPA platform.
  *
- * Ground truth properties and area masks verified against Changan OpenOS framework.
+ * Ground truth properties and area masks verified against Changan OpenOS framework
  */
 data class DeepalS05Telemetry(
     // Powertrain & Dynamics
@@ -45,14 +45,17 @@ data class DeepalS05Telemetry(
     val isRearDefrostOn: Boolean = false,
     val isSteeringWheelHeatOn: Boolean = false,
 
-    // Seats & Comfort
+    // Seats & Comfort (Driver & Passenger)
     val driverSeatHeat: Int = 0,     // 0=Off, 1=Low, 2=Med, 3=High
     val passengerSeatHeat: Int = 0,
     val driverSeatVent: Int = 0,     // 0=Off, 1=Low, 2=Med, 3=High
     val passengerSeatVent: Int = 0,
     val isSeatMassageOn: Boolean = false,
-    val seatMassageMode: Int = 1,
-    val seatMassageLevel: Int = 1,
+    val seatMassageMode: Int = 1,    // 1..8 (Pneumatic massage pattern)
+    val seatMassageLevel: Int = 1,   // 1..3 (Pneumatic massage intensity level)
+    val isPassengerSeatMassageOn: Boolean = false,
+    val passengerSeatMassageMode: Int = 1,  // 1..8
+    val passengerSeatMassageLevel: Int = 1, // 1..3
 
     // Doors, Windows & Body Access
     val isDoorLocked: Boolean = true,
@@ -73,6 +76,8 @@ data class DeepalS05Telemetry(
     // Lighting & Cabin Environment
     val ambientLightColor: Int = 1,
     val ambientLightBrightness: Int = 60,
+    val ambientLightPattern: Int = 1,     // 1..3 (Dynamic pattern effect)
+    val ambientLightColorChoice: Int = 54, // Color preset code (54, 42, 33, 12, 6, 1)
     val isAirPurifierOn: Boolean = false,
     val isAebOn: Boolean = true,
 
@@ -82,6 +87,9 @@ data class DeepalS05Telemetry(
     // Intelligent Automation Signals
     val isBatteryPreconditioning: Boolean = false,
     val rainSensorState: Int = 1, // 1=No Rain, 2=Light Rain, 3=Heavy Rain
+
+    // Vehicle Identification & Platform
+    val detectedProfileId: String = "deepal-s05-c857",
 
     // Connection Status
     val isVirtualCarConnected: Boolean = false

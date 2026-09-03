@@ -67,7 +67,8 @@ class VehicleControlViewModel : ViewModel() {
                     doorFrOpen = false,
                     doorRlOpen = false,
                     doorRrOpen = false,
-                    isTailgateOpen = false
+                    isTailgateOpen = false,
+                    detectedProfileId = "deepal-s05-c857"
                 )
             }
             startSimulationLoop()
@@ -188,6 +189,14 @@ class VehicleControlViewModel : ViewModel() {
         }
     }
 
+    fun toggleAeb() {
+        val next = !telemetry.value.isAebOn
+        viewModelScope.launch {
+            client.setAutoEmergencyBraking(next)
+            logAction("Auto Emergency Braking (AEB) set to $next")
+        }
+    }
+
     // --- Seats Comfort ---
     fun setDriverSeatHeat(level: Int) {
         viewModelScope.launch {
@@ -221,7 +230,15 @@ class VehicleControlViewModel : ViewModel() {
         val next = !telemetry.value.isSeatMassageOn
         viewModelScope.launch {
             client.setSeatMassage(next, mode, level)
-            logAction("Driver Massage set to $next (Mode $mode, Level $level)")
+            logAction("Driver Massage set to $next (Pattern $mode, Level $level)")
+        }
+    }
+
+    fun togglePassengerMassage(mode: Int = 1, level: Int = 2) {
+        val next = !telemetry.value.isPassengerSeatMassageOn
+        viewModelScope.launch {
+            client.setPassengerSeatMassage(next, mode, level)
+            logAction("Passenger Massage set to $next (Pattern $mode, Level $level)")
         }
     }
 
@@ -312,6 +329,20 @@ class VehicleControlViewModel : ViewModel() {
         viewModelScope.launch {
             client.setAmbientLight(colorIdx, brightness)
             logAction("Ambient Light set to Preset $colorIdx, Brightness $brightness%")
+        }
+    }
+
+    fun setAmbientPattern(pattern: Int) {
+        viewModelScope.launch {
+            client.setAmbientLightPattern(pattern)
+            logAction("Ambient Dynamic Pattern set to Pattern $pattern")
+        }
+    }
+
+    fun setAmbientColorChoice(choice: Int) {
+        viewModelScope.launch {
+            client.setAmbientColorChoice(choice)
+            logAction("Ambient Color Choice set to Code $choice")
         }
     }
 

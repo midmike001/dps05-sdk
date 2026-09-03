@@ -12,7 +12,8 @@ The **Changan Deepal S05** features a dedicated Battery Management System (BMS),
 | Property Constant | Hex ID | Area Mask | Data Type | Description |
 |:---|:---|:---|:---|:---|
 | `PROP_BATTERY_SOC` | `0x3140028c` | Area `0x1b` (27) | `Int` (0 to 100) | High-voltage battery state of charge (%) |
-| `PROP_REMAINING_RANGE_EV_DTE` | `0x31400501` | Area 0 (Global) | `Int` (km) | Remaining pure EV driving range (`vc_alias_e_dte`) |
+| `PROP_REMAINING_RANGE_C857` | `0x314006c4` | Area 0 (Global) | `Int` (km) | Ground truth remaining range for Deepal S05 C857 (`BuiltInProfiles.DEEPAL_S05_C857`) |
+| `PROP_REMAINING_RANGE_EV_DTE` | `0x31400501` | Area 0 (Global) | `Int` (km) | Remaining pure EV driving range (`vc_alias_left_ev_dte`) |
 | `PROP_REMAINING_RANGE_DISP_DTE` | `0x31600205` | Area 0 (Global) | `Int` (km) | Instrument cluster display DTE (`vc_alias_disp_dte`) |
 | `PROP_ODOMETER` | `0x31600204` | Area 0 (Global) | `Float` (raw meters) | Vehicle total odometer (divide by `1000f` for km) |
 | `PROP_TIRE_PRESSURE` | `0x37600211` | FL (`0x01`), FR (`0x02`), RL (`0x04`), RR (`0x08`) | `Float` (Bar) | Real-time tyre pressure telemetry (`vc_alias_tire_pressure`) |
@@ -73,13 +74,13 @@ suspend fun controlPreconditioning() {
 
 ---
 
-## 4. Driving Dynamics Modes (`PROP_DRIVE_MODE = 0x3140040d`)
+## 4. Driving Dynamics Modes (`PROP_DRIVE_MODE = 0x3140040d` / `PROP_DRIVE_MODE_CHOICE = 0x314003f5`)
 
 The Deepal S05 powertrain controller supports 4 driving mode presets:
-- `DRIVE_MODE_COMFORT = 1`: Standard balanced regeneration and steering weight (`\u8212\u9002`)
-- `DRIVE_MODE_SPORT = 2`: Instant torque response, firm suspension tuning (`\u8fd0\u52a8`)
-- `DRIVE_MODE_ECO = 3`: Maximum efficiency, optimized energy recovery (`\u7ecf\u6d4e`)
-- `DRIVE_MODE_CUSTOM = 4`: User configurable response curves (`\u81ea\u5b9a\u4e49`)
+- `DRIVE_MODE_COMFORT = 1`: Standard balanced regeneration and steering weight
+- `DRIVE_MODE_SPORT = 2`: Instant torque response, firm suspension tuning
+- `DRIVE_MODE_ECO = 3`: Maximum efficiency, optimized energy recovery
+- `DRIVE_MODE_CUSTOM = 4`: User configurable response curves
 
 ```kotlin
 suspend fun setPowertrainMode() {
